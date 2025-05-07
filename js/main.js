@@ -34,18 +34,22 @@ const urlInput = document.getElementById('url-input');
 const fileInput = document.getElementById('file-input');
 const linkCount = document.getElementById('link-count');
 
-const updateLinkCount = () => {
-  const urls = urlInput.value.split('\n').filter(url => url.trim() && isValidUrl(url));
-  linkCount.textContent = urls.length;
-};
-
 const isValidUrl = (string) => {
   try {
+    // Ensure URL has protocol (http:// or https://)
+    if (!string.startsWith('http://') && !string.startsWith('https://')) {
+      string = 'https://' + string;
+    }
     new URL(string);
-    return true;
+    return string;
   } catch (_) {
     return false;
   }
+};
+
+const updateLinkCount = () => {
+  const urls = urlInput.value.split('\n').map(url => url.trim()).filter(url => isValidUrl(url));
+  linkCount.textContent = urls.length;
 };
 
 urlInput.addEventListener('input', updateLinkCount);
@@ -57,7 +61,7 @@ fileInput.addEventListener('change', (e) => {
   const reader = new FileReader();
   reader.onload = (event) => {
     const content = event.target.result;
-    const urls = content.split('\n').filter(url => url.trim() && isValidUrl(url));
+    const urls = content.split('\n').map(url => url.trim()).filter(url => isValidUrl(url));
     urlInput.value = urls.join('\n');
     updateLinkCount();
   };
@@ -66,22 +70,37 @@ fileInput.addEventListener('change', (e) => {
 
 // Start Scan
 document.getElementById('start-scan').addEventListener('click', async () => {
-  const urls = urlInput.value.split('\n').filter(url => url.trim() && isValidUrl(url));
+  const rawUrls = urlInput.value.split('\n').map(url => url.trim()).filter(url => url);
+  const urls = rawUrls.map(url => isValidUrl(url)).filter(url => url);
+  
   if (!urls.length) {
-    alert('Please enter at least one valid URL.');
+    alert('Please enter at least one valid URL (e.g., https://example.com).');
     return;
   }
 
-  document.querySelector('.loading-overlay').classList.remove('hidden');
-  document.querySelector('.results-section').classList.add('hidden');
+  if (urls.length < rawUrls.length) {
+    alert('Some URLs were invalid and skipped. Ensure URLs include http:// or https://.');
+  }
 
-  const results = await scanLinks(urls); // From scanner.js
-  displayResults(results);
-  updateHealthScore(results);
+  const loadingOverlay = document.querySelector('.loading-overlay');
+  const resultsSection = document.querySelector('.results-section');
+  
+  loadingOverlay.classList.remove('hidden');
+  resultsSection.classList.add('hidden');
 
-  document.querySelector('.loading-overlay').classList.add('hidden');
-  document.querySelector('.results-section').classList.remove('hidden');
-  window.scrollTo({ top: document.querySelector('.results-section').offsetTop, behavior: 'smooth' });
+  try {
+    const results = await scanLinks(urls); // From scanner.js
+    displayResults(results);
+    updateHealthScore(results);
+    
+    loadingOverlay.classList.add('hidden');
+    resultsSection.classList.remove('hidden');
+    window.scrollTo({ top: resultsSection.offsetTop, behavior: 'smooth' });
+  } catch (error) {
+    console.error('Scan failed:', error);
+    alert('An error occurred during scanning. Please check the console for details.');
+    loadingOverlay.classList.add('hidden');
+  }
 });
 
 // Display Results
@@ -95,19 +114,30 @@ const displayResults = (results) => {
     item.id = `result-${index}`;
 
     let statusClass = '';
-    if (result.status === 200) statusClass = 'status-200';
-    else if (result.status === 301 || result.status === 302) statusClass = 'status-redirect';
-    else if (result.status === 404 || result.status === 500) statusClass = 'status-error';
-    else statusClass = 'status-unknown';
+    let statusText = result.status;
+    if (result.status === 200) {
+      statusClass = 'status-200';
+      statusText = '200 OK';
+    } else if (result.status === 301 || result.status === 302) {
+      statusClass = 'status-redirect';
+      statusText = `${result.status} Redirect`;
+    } else if (result.status === 404 || result.status === 500) {
+      statusClass = 'status-error';
+      statusText = `${result.status} Error`;
+    } else {
+      statusClass = 'status-unknown';
+      statusText = 'Unknown';
+    }
 
     item.innerHTML = `
       <div class="result-header">
         <p><strong>URL:</strong> <a href="${result.url}" target="_blank">${result.url}</a></p>
-        <span class="status-tag ${statusClass}">${result.status === 'unknown' ? 'Unknown' : result.status}</span>
+        <span class="status-tag ${statusClass}">${statusText}</span>
       </div>
       <div class="result-details">
         ${result.isRisky ? '<p><span class="status-tag risk-warning">⚠️ Spam/Malware Domain</span></p>' : ''}
         ${result.redirectChain.length > 1 ? `<p class="redirect-chain">Redirect Chain: ${result.redirectChain.join(' → ')}</p>` : ''}
+        ${result.error ? `<p class="error-message">Note: ${result.error}</p>` : ''}
       </div>
     `;
 
