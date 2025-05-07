@@ -54,7 +54,7 @@ const exportPDF = () => {
     jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
   };
   html2pdf().set(opt).from(element).save().then(() => {
-    document.body.removeChild(element);
+    document.body.appendChild(element);
   });
 };
 
