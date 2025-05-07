@@ -8,47 +8,57 @@
   <link rel="icon" href="assets/favicon.png" type="image/png">
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
-<body>
+<body class="dark-mode">
   <!-- Header -->
-  <header class="header">
-    <div class="header-content">
-      <img src="assets/logo.svg" alt="LinkCheckr Pro Logo" class="logo">
-      <h1>LinkCheckr Pro</h1>
+  <header class="hero card">
+    <img src="assets/logo.svg" alt="LinkCheckr Pro Logo" class="logo">
+    <h1>LinkCheckr Pro</h1>
+    <div class="theme-switch" id="theme-toggle" aria-label="Toggle Theme">
+      <div class="theme-slider"></div>
     </div>
   </header>
 
   <!-- Main Content -->
   <main>
     <!-- Input Section -->
-    <section class="input-section">
-      <h2>Advanced Broken Link & Redirect Intelligence</h2>
-      <p>Check multiple URLs for broken links, redirects, and potential security issues with our powerful scanning tool.</p>
-      <textarea id="url-input" placeholder="Enter URLs (one per line, e.g., https://example.com)" rows="6"></textarea>
-      <div class="file-upload">
-        <div id="drop-zone" class="drop-zone">Drag & drop a file (txt/csv) or <input type="file" id="file-input" accept=".txt,.csv"></div>
+    <section class="input-section card animated">
+      <h2>Check Your Links</h2>
+      <textarea id="url-input" placeholder="Paste URLs (one per line, e.g., https://example.com)" rows="6"></textarea>
+      <div class="input-controls">
+        <input type="file" id="file-input" accept=".txt,.csv">
+        <button id="start-scan" class="glow-button">Start Scan</button>
       </div>
-      <button id="start-scan" class="scan-button">Start Scan</button>
       <p>Total Links: <span id="link-count">0</span></p>
     </section>
 
+    <!-- Tips Panel -->
+    <section class="tips-panel card animated">
+      <h3>Smart Tip</h3>
+      <p id="tip-text" class="tip-text">Paste your links to start scanning!</p>
+    </section>
+
     <!-- Results Section -->
-    <section class="results-section hidden">
+    <section class="results-section card hidden">
+      <h2>Scan Results</h2>
       <div class="health-score">
-        <h3>Link Health Score</h3>
+        <h3>Link Health: <span id="health-score">0%</span></h3>
         <div class="progress-circle" id="progress-circle"></div>
-        <p><span id="health-score">0%</span></p>
       </div>
-      <div class="export-options">
-        <button id="export-csv" class="export-button">Export CSV</button>
-        <button id="export-pdf" class="export-button">Export PDF Report</button>
+      <div class="results-summary">
+        <p>Total: <span id="summary-total">0</span> | OK: <span id="summary-ok">0</span> | Redirects: <span id="summary-redirects">0</span> | Broken: <span id="summary-broken">0</span> | Risky: <span id="summary-risky">0</span></p>
+        <label class="toggle-risky-broken"><input type="checkbox" id="toggle-risky-broken"> Show Only Risky/Broken</label>
       </div>
-      <div id="results-container" class="results-list"></div>
+      <div id="results-container" class="results-grid"></div>
+      <div class="export-controls">
+        <button id="export-csv" class="glow-button">Export CSV</button>
+        <button id="export-pdf" class="glow-button">Export PDF</button>
+      </div>
     </section>
   </main>
 
   <!-- Footer -->
-  <footer>
-    <p>Built Free by LinkCheckr</p>
+  <footer class="card">
+    <p>Built Free by [YourName]</p>
   </footer>
 
   <!-- Loading Overlay -->
