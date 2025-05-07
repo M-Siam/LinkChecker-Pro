@@ -1,99 +1,30 @@
-// Link Scanner
+// Mock Link Scanner for Testing
 const scanLinks = async (urls) => {
-  console.log('Scanning URLs:', urls);
-  const results = await Promise.all(urls.map(async (url) => {
-    try {
-      // Attempt fetch with HEAD request
-      const response = await fetchWithTimeout(url, { 
-        method: 'HEAD', 
-        redirect: 'manual',
-        mode: 'cors',
-        cache: 'no-cache'
-      }, 5000);
+  console.log('Mock scanning URLs:', urls);
 
-      let status = response.status;
-      let redirectChain = [];
-      let error = null;
+  // Simulate a delay to mimic network requests
+  await new Promise(resolve => setTimeout(resolve, 1000));
 
-      if (status === 301 || status === 302) {
-        redirectChain = await getRedirectChain(url);
-      }
+  const results = urls.map((url, index) => {
+    const domain = new URL(url).hostname.toLowerCase();
+    const isRisky = blacklist.some(b => domain === b || domain.endsWith(`.${b}`));
 
-      const domain = new URL(url).hostname.toLowerCase();
-      const isRisky = blacklist.some(b => domain === b || domain.endsWith(`.${b}`));
+    // Simulate different statuses for testing
+    const mockStatuses = [200, 301, 404, 'unknown'];
+    const status = mockStatuses[index % mockStatuses.length];
+    let redirectChain = [];
+    let error = null;
 
-      console.log(`Success for ${url}: Status ${status}`);
-      return { url, status, redirectChain, isRisky, error };
-    } catch (error) {
-      console.warn(`Error scanning ${url}: ${error.message}`);
-      const domain = new URL(url).hostname.toLowerCase();
-      const isRisky = blacklist.some(b => domain === b || domain.endsWith(`.${b}`));
-
-      // Handle specific errors
-      let errorMessage = 'Unable to scan (possible CORS restriction)';
-      if (error.name === 'AbortError') {
-        errorMessage = 'Request timed out';
-      } else if (error.message.includes('network error')) {
-        errorMessage = 'Network error (check URL or connectivity)';
-      }
-
-      return { 
-        url, 
-        status: 'unknown', 
-        redirectChain: [], 
-        isRisky, 
-        error: errorMessage 
-      };
+    if (status === 301 || status === 302) {
+      redirectChain = [url, `https://redirect${index + 1}.com`];
+    } else if (status === 'unknown') {
+      error = 'Mock scan: Unable to verify status';
     }
-  }));
-  console.log('Scan results:', results);
+
+    console.log(`Mock result for ${url}: Status ${status}`);
+    return { url, status, redirectChain, isRisky, error };
+  });
+
+  console.log('Mock scan results:', results);
   return results;
-};
-
-// Fetch with Timeout
-const fetchWithTimeout = async (url, options, timeout) => {
-  const controller = new AbortController();
-  const id = setTimeout(() => controller.abort(), timeout);
-
-  try {
-    const response = await fetch(url, { ...options, signal: controller.signal });
-    clearTimeout(id);
-    return response;
-  } catch (error) {
-    clearTimeout(id);
-    throw error;
-  }
-};
-
-// Redirect Chain Detection
-const getRedirectChain = async (url, chain = [url], depth = 0) => {
-  if (depth > 10) {
-    console.warn(`Redirect chain for ${url} exceeded depth limit`);
-    return chain;
-  }
-  try {
-    const response = await fetchWithTimeout(url, { 
-      method: 'HEAD', 
-      redirect: 'manual',
-      mode: 'cors'
-    }, 3000);
-    const location = response.headers.get('location');
-    if (location && isValidUrl(location)) {
-      chain.push(location);
-      return await getRedirectChain(location, chain, depth + 1);
-    }
-    return chain;
-  } catch (error) {
-    console.warn(`Error in redirect chain for ${url}: ${error.message}`);
-    return chain;
-  }
-};
-
-const isValidUrl = (string) => {
-  try {
-    new URL(string);
-    return true;
-  } catch (_) {
-    return false;
-  }
 };
