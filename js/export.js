@@ -1,15 +1,15 @@
-// Export CSV
 const exportCSV = () => {
-  const results = Array.from(document.querySelectorAll('#results-container tr')).map(row => {
-    const url = row.querySelector('.url a').textContent;
-    const status = row.querySelector('.status-tag').textContent.replace(/✔️|🔄|❌|🕒|⚠️|❓/, '').trim();
-    const isRisky = row.querySelector('.status-tag').textContent.includes('Risky') ? 'Yes' : 'No';
-    const redirectChain = row.querySelector('.details').textContent.includes('Redirect Chain') ?
-                          row.querySelector('.details').textContent.split('Redirect Chain: ')[1] : 'None';
-    return `"${url.replace(/"/g, '""')}",${status},${isRisky},"${redirectChain.replace(/"/g, '""')}"`;
+  const results = Array.from(document.querySelectorAll('.result-card')).map(card => {
+    const url = card.querySelector('.url').textContent;
+    const status = card.querySelector('.status-tag').textContent.replace(/[✅🔄❌🕒⚠️]/, '').trim();
+    const isRisky = card.querySelector('.status-tag').textContent.includes('Risky') ? 'Yes' : 'No';
+    const redirectChain = card.querySelector('.details').textContent.includes('Redirect Chain') ?
+                          card.querySelector('.details').textContent.split('Redirect Chain: ')[1] : 'None';
+    const timestamp = card.querySelector('.timestamp').textContent.replace('Scanned: ', '');
+    return `"${url.replace(/"/g, '""')}",${status},${isRisky},"${redirectChain.replace(/"/g, '""')}","${timestamp}"`;
   });
 
-  const csv = ['URL,Status,Risky,Redirect Chain', ...results].join('\n');
+  const csv = ['URL,Status,Risky,Redirect Chain,Timestamp', ...results].join('\n');
   const blob = new Blob([csv], { type: 'text/csv' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -19,7 +19,6 @@ const exportCSV = () => {
   URL.revokeObjectURL(url);
 };
 
-// Export PDF
 const exportPDF = () => {
   const element = document.createElement('div');
   element.className = 'pdf-content';
@@ -35,13 +34,15 @@ const exportPDF = () => {
         <th>Status</th>
         <th>Risky</th>
         <th>Redirect Chain</th>
+        <th>Timestamp</th>
       </tr>
-      ${Array.from(document.querySelectorAll('#results-container tr')).map(row => `
+      ${Array.from(document.querySelectorAll('.result-card')).map(card => `
         <tr>
-          <td>${row.querySelector('.url a').textContent}</td>
-          <td class="${row.querySelector('.status-tag').classList[1]}">${row.querySelector('.status-tag').textContent.replace(/✔️|🔄|❌|🕒|⚠️|❓/, '').trim()}</td>
-          <td>${row.querySelector('.status-tag').textContent.includes('Risky') ? 'Yes' : 'No'}</td>
-          <td>${row.querySelector('.details').textContent.includes('Redirect Chain') ? row.querySelector('.details').textContent.split('Redirect Chain: ')[1] : 'None'}</td>
+          <td>${card.querySelector('.url').textContent}</td>
+          <td class="${card.querySelector('.status-tag').classList[1]}">${card.querySelector('.status-tag').textContent.replace(/[✅🔄❌🕒⚠️]/, '').trim()}</td>
+          <td>${card.querySelector('.status-tag').textContent.includes('Risky') ? 'Yes' : 'No'}</td>
+          <td>${card.querySelector('.details').textContent.includes('Redirect Chain') ? card.querySelector('.details').textContent.split('Redirect Chain: ')[1] : 'None'}</td>
+          <td>${card.querySelector('.timestamp').textContent.replace('Scanned: ', '')}</td>
         </tr>
       `).join('')}
     </table>
@@ -60,6 +61,5 @@ const exportPDF = () => {
   });
 };
 
-// Event Listeners
 document.getElementById('export-csv').addEventListener('click', exportCSV);
 document.getElementById('export-pdf').addEventListener('click', exportPDF);
