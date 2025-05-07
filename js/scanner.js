@@ -1,3 +1,5 @@
+const blacklistSet = new Set(blacklist); // Optimize lookup
+
 const scanLinks = async (urls) => {
   console.log('Scanning URLs:', urls);
 
@@ -20,7 +22,7 @@ const scanLinks = async (urls) => {
     try {
       // Extract domain for blacklist check
       const domain = new URL(url).hostname.toLowerCase();
-      result.isRisky = blacklist.some(b => domain === b || domain.endsWith(`.${b}`));
+      result.isRisky = blacklistSet.has(domain) || Array.from(blacklistSet).some(b => domain.endsWith(`.${b}`));
 
       if (result.isRisky) {
         result.status = 'risky';
@@ -129,3 +131,31 @@ const scanLinks = async (urls) => {
   console.log('Scan results:', results);
   return results;
 };
+
+// Utility to generate fictional domains
+const generateDomains = (count) => {
+  const tlds = ['com', 'net', 'org', 'biz', 'info', 'co', 'io', 'me', 'site', 'online', 'xyz', 'club', 'shop', 'live', 'tech'];
+  const prefixes = ['malicious', 'phish', 'scam', 'fake', 'adult', 'spam', 'fraud', 'bad', 'shady', 'risky', 'evil', 'hack', 'bogus', 'dodgy', 'unsecure'];
+  const generated = new Set();
+
+  while (generated.size < count) {
+    const prefix = prefixes[Math.floor(Math.random() * prefixes.length)];
+    const id = Math.random().toString(36).substring(7);
+    const tld = tlds[Math.floor(Math.random() * tlds.length)];
+    generated.add(`${prefix}-${id}.${tld}`);
+  }
+
+  return Array.from(generated);
+};
+
+// Function to append generated domains to blacklist
+const appendGeneratedDomains = (count) => {
+  const newDomains = generateDomains(count);
+  blacklist.push(...newDomains);
+  blacklistSet.clear();
+  blacklist.forEach(domain => blacklistSet.add(domain));
+  console.log(`Appended ${count} domains to blacklist. Total: ${blacklist.length}`);
+};
+
+// Example: Generate 10,000 domains (uncomment to use)
+// appendGeneratedDomains(10000);
