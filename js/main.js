@@ -70,12 +70,19 @@ startScan.addEventListener('click', async () => {
 
     loadingOverlay.classList.remove('hidden');
     showRandomTip();
-    const results = await scanUrls(urls);
-    displayResults(results);
-    updateHealthScore(results);
-    loadingOverlay.classList.add('hidden');
-    resultsSection.classList.remove('hidden');
-    resultsSection.scrollIntoView({ behavior: 'smooth' });
+    try {
+        const results = await scanUrls(urls);
+        window.scanResults = results; // Store for export
+        displayResults(results);
+        updateHealthScore(results);
+        resultsSection.classList.remove('hidden');
+        resultsSection.scrollIntoView({ behavior: 'smooth' });
+    } catch (error) {
+        console.error('Scan failed:', error);
+        alert('An error occurred during the scan. Please check the console for details.');
+    } finally {
+        loadingOverlay.classList.add('hidden');
+    }
 });
 
 // Results Display
