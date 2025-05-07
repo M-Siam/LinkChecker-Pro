@@ -1,4 +1,4 @@
-const blacklistSet = new Set(blacklist);
+const blacklistSet = new Set(blacklist); // Optimize lookup
 
 const scanLinks = async (urls) => {
   console.log('Scanning URLs:', urls);
@@ -23,7 +23,7 @@ const scanLinks = async (urls) => {
 
       if (result.isRisky) {
         result.status = 'risky';
-        result.error = 'Phishing or Risky Link (Blacklisted Domain)';
+        result.error = '⚠️ Phishing or Risky Link (Blacklisted Domain)';
         results.push(result);
         continue;
       }
@@ -43,7 +43,7 @@ const scanLinks = async (urls) => {
             });
           }
         };
-        xhr.onerror = () => reject(new Error('Connection Failed'));
+        xhr.onerror = () => reject(new Error('Network error'));
         xhr.ontimeout = () => reject(new Error('Timeout'));
         xhr.send();
       });
@@ -69,14 +69,14 @@ const scanLinks = async (urls) => {
         result.error = 'Request timed out after 8 seconds';
       } else {
         result.status = 'unreachable';
-        result.error = error.message;
+        result.error = `Unreachable: ${error.message}`;
       }
     }
 
     // Classify status for sorting
     if (result.status >= 400) {
       result.status = 'broken';
-    } else if (result.status >= 300 && response.status < 400) {
+    } else if (result.status >= 300 && result.status < 400) {
       result.status = 'redirect';
     } else if (result.status === 200) {
       result.status = 'ok';
