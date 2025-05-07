@@ -43,6 +43,8 @@ document.addEventListener('DOMContentLoaded', () => {
   // Link Input Handling
   const urlInput = document.getElementById('url-input');
   const fileInput = document.getElementById('file-input');
+  const fileNameContainer = document.getElementById('file-name');
+  const clearFileButton = document.getElementById('clear-file');
   const linkCount = document.getElementById('link-count');
 
   const isValidUrl = (string) => {
@@ -70,10 +72,14 @@ document.addEventListener('DOMContentLoaded', () => {
     console.error('URL input not found');
   }
 
-  if (fileInput) {
+  if (fileInput && fileNameContainer && clearFileButton) {
     fileInput.addEventListener('change', (e) => {
       const file = e.target.files[0];
       if (!file) return;
+
+      fileNameContainer.style.display = 'flex';
+      fileNameContainer.querySelector('span').textContent = file.name;
+      console.log('File selected:', file.name);
 
       const reader = new FileReader();
       reader.onload = (event) => {
@@ -85,8 +91,17 @@ document.addEventListener('DOMContentLoaded', () => {
       };
       reader.readAsText(file);
     });
+
+    clearFileButton.addEventListener('click', () => {
+      fileInput.value = '';
+      fileNameContainer.style.display = 'none';
+      fileNameContainer.querySelector('span').textContent = '';
+      urlInput.value = '';
+      updateLinkCount();
+      console.log('File cleared');
+    });
   } else {
-    console.error('File input not found');
+    console.error('File input, file name container, or clear file button not found');
   }
 
   // Start Scan
