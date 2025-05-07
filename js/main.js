@@ -1,48 +1,45 @@
 document.addEventListener('DOMContentLoaded', () => {
   console.log('DOM fully loaded, initializing...');
 
-  // Theme Toggle
-  const toggleTheme = () => {
-    document.body.classList.toggle('dark-mode');
-    document.body.classList.toggle('light-mode');
-    localStorage.setItem('theme', document.body.classList.contains('dark-mode') ? 'dark' : 'light');
-    console.log('Theme toggled to:', localStorage.getItem('theme'));
-  };
+  // Drag and Drop
+  const dropZone = document.getElementById('drop-zone');
+  const fileInput = document.getElementById('file-input');
 
-  // Initialize Theme
-  if (localStorage.getItem('theme') === 'light') {
-    document.body.classList.remove('dark-mode');
-    document.body.classList.add('light-mode');
-  } else {
-    document.body.classList.add('dark-mode');
-  }
+  if (dropZone && fileInput) {
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+      dropZone.addEventListener(eventName, (e) => e.preventDefault());
+    });
 
-  const themeToggle = document.getElementById('theme-toggle');
-  if (themeToggle) {
-    themeToggle.addEventListener('click', toggleTheme);
-  } else {
-    console.error('Theme toggle button not found');
-  }
+    dropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      const file = e.dataTransfer.files[0];
+      if (file && (file.type === 'text/plain' || file.type === 'text/csv')) {
+        handleFile(file);
+      }
+    });
 
-  // Smart Tips
-  const tips = [
-    'Too many redirects hurt SEO.',
-    'Broken links reduce user trust.',
-    'Check links monthly to stay clean.'
-  ];
+    fileInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file && (file.type === 'text/plain' || file.type === 'text/csv')) {
+        handleFile(file);
+      }
+    });
 
-  const showRandomTip = () => {
-    const tipText = document.getElementById('tip-text');
-    if (tipText) {
-      tipText.textContent = tips[Math.floor(Math.random() * tips.length)];
+    function handleFile(file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const content = event.target.result;
+        const urls = content.split('\n').map(url => url.trim()).filter(url => isValidUrl(url));
+        urlInput.value = urls.join('\n');
+        updateLinkCount();
+        console.log('File uploaded, URLs loaded:', urls);
+      };
+      reader.readAsText(file);
     }
-  };
-  showRandomTip();
-  setInterval(showRandomTip, 5000);
+  }
 
   // Link Input Handling
   const urlInput = document.getElementById('url-input');
-  const fileInput = document.getElementById('file-input');
   const linkCount = document.getElementById('link-count');
 
   const isValidUrl = (string) => {
@@ -66,27 +63,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (urlInput) {
     urlInput.addEventListener('input', updateLinkCount);
-  } else {
-    console.error('URL input not found');
-  }
-
-  if (fileInput) {
-    fileInput.addEventListener('change', (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
-
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const content = event.target.result;
-        const urls = content.split('\n').map(url => url.trim()).filter(url => isValidUrl(url));
-        urlInput.value = urls.join('\n');
-        updateLinkCount();
-        console.log('File uploaded, URLs loaded:', urls);
-      };
-      reader.readAsText(file);
-    });
-  } else {
-    console.error('File input not found');
   }
 
   // Start Scan
@@ -116,8 +92,6 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log('Showing loading overlay');
         loadingOverlay.classList.remove('hidden');
         resultsSection.classList.add('hidden');
-      } else {
-        console.error('Loading overlay or results section not found');
       }
 
       try {
@@ -140,8 +114,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       }
     });
-  } else {
-    console.error('Start Scan button not found');
   }
 
   // Display Results
@@ -154,85 +126,56 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     container.innerHTML = '';
 
-    results.forEach((result, index) => {
-      const card = document.createElement('div');
-      card.className = `result-card ${result.status}`;
-      card.id = `result-${index}`;
+    results.forEach((result) => {
+      const item = document.createElement('div');
+      item.className = 'result-item';
 
-      let statusClass = '';
       let statusText = '';
-      let statusIcon = '';
-      let tooltip = '';
+      let statusClass = '';
 
       switch (result.status) {
         case 'ok':
-          statusClass = 'status-ok';
           statusText = 'OK';
-          statusIcon = '✅';
-          tooltip = 'Link is accessible and working';
+          statusClass = 'status-ok';
           break;
         case 'redirect':
-          statusClass = 'status-redirect';
           statusText = 'Redirected';
-          statusIcon = '🔄';
-          tooltip = 'Link redirects to another URL';
+          statusClass = 'status-redirect';
           break;
         case 'broken':
+          statusText = result.error || 'Connection Failed';
           statusClass = 'status-broken';
-          statusText = 'Broken';
-          statusIcon = '❌';
-          tooltip = 'Link is inaccessible (error)';
           break;
         case 'timeout':
-          statusClass = 'status-timeout';
           statusText = 'Timeout';
-          statusIcon = '🕒';
-          tooltip = 'Request timed out after 8 seconds';
+          statusClass = 'status-timeout';
           break;
         case 'unreachable':
+          statusText = 'Connection Failed';
           statusClass = 'status-unreachable';
-          statusText = 'Unreachable';
-          statusIcon = '🕒';
-          tooltip = 'Link could not be reached';
           break;
         case 'risky':
-          statusClass = 'status-risky';
           statusText = 'Risky';
-          statusIcon = '⚠️';
-          tooltip = 'Link is on a blacklisted domain';
+          statusClass = 'status-risky';
           break;
       }
 
-      const faviconUrl = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(result.url)}`;
-      const details = [];
-      if (result.redirectChain.length > 1) {
-        details.push(`Redirect Chain: ${result.redirectChain.join(' → ')}`);
-      }
-      if (result.error) {
-        details.push(result.error);
-      }
-
-      card.innerHTML = `
-        <img src="${faviconUrl}" class="favicon" alt="Favicon">
-        <a href="${result.url}" class="url" target="_blank">${result.url}</a>
-        <span class="status-tag ${statusClass}" data-tooltip="${tooltip}">
-          <span class="status-icon">${statusIcon}</span> ${statusText}
-        </span>
-        <div class="details">${details.join('<br>')}</div>
-        <div class="timestamp">Scanned: ${new Date(result.timestamp).toLocaleString()}</div>
+      item.innerHTML = `
+        <span class="url">${result.url}</span>
+        <span class="status ${statusClass}">${statusText}</span>
       `;
 
-      container.appendChild(card);
+      container.appendChild(item);
     });
 
     // Toggle Risky/Broken
     const toggleRiskyBroken = document.getElementById('toggle-risky-broken');
     if (toggleRiskyBroken) {
       toggleRiskyBroken.addEventListener('change', () => {
-        const cards = document.querySelectorAll('.result-card');
-        cards.forEach(card => {
-          const isRiskyOrBroken = card.classList.contains('risky') || card.classList.contains('broken');
-          card.style.display = toggleRiskyBroken.checked && !isRiskyOrBroken ? 'none' : 'block';
+        const items = document.querySelectorAll('.result-item');
+        items.forEach(item => {
+          const isRiskyOrBroken = item.querySelector('.status').classList.contains('status-risky') || item.querySelector('.status').classList.contains('status-broken');
+          item.style.display = toggleRiskyBroken.checked && !isRiskyOrBroken ? 'none' : 'flex';
         });
       });
     }
@@ -256,15 +199,13 @@ document.addEventListener('DOMContentLoaded', () => {
   // Health Score
   const updateHealthScore = (results) => {
     const validLinks = results.filter(r => r.status === 'ok').length;
-    const score = Math.round((validLinks / results.length) * 100);
+    const score = Math.round((validLinks / results.length) * 100) || 0;
     const healthScore = document.getElementById('health-score');
     const progressCircle = document.getElementById('progress-circle');
     if (healthScore && progressCircle) {
       healthScore.textContent = `${score}%`;
       progressCircle.style.setProperty('--progress', `${score}%`);
       console.log('Health score updated:', score);
-    } else {
-      console.error('Health score or progress circle not found');
     }
   };
 });
