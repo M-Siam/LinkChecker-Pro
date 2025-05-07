@@ -1,4 +1,3 @@
-// Ensure DOM is fully loaded
 document.addEventListener('DOMContentLoaded', () => {
   console.log('DOM fully loaded, initializing...');
 
@@ -123,7 +122,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       try {
         console.log('Initiating scan for URLs:', urls);
-        const results = await scanLinks(urls); // From scanner.js
+        const results = await scanLinks(urls);
         console.log('Displaying results:', results);
         displayResults(results);
         updateHealthScore(results);
@@ -148,7 +147,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Display Results
   const displayResults = (results) => {
     console.log('Rendering results:', results);
-    const container = document.querySelector('#results-container tbody');
+    const container = document.getElementById('results-container');
     if (!container) {
       console.error('Results container not found');
       return;
@@ -156,9 +155,9 @@ document.addEventListener('DOMContentLoaded', () => {
     container.innerHTML = '';
 
     results.forEach((result, index) => {
-      const row = document.createElement('tr');
-      row.id = `result-${index}`;
-      row.className = result.status === 200 ? 'ok' : '';
+      const card = document.createElement('div');
+      card.className = `result-card ${result.status}`;
+      card.id = `result-${index}`;
 
       let statusClass = '';
       let statusText = '';
@@ -166,21 +165,19 @@ document.addEventListener('DOMContentLoaded', () => {
       let tooltip = '';
 
       switch (result.status) {
-        case 200:
-          statusClass = 'status-200';
+        case 'ok':
+          statusClass = 'status-ok';
           statusText = 'OK';
-          statusIcon = '✔️';
+          statusIcon = '✅';
           tooltip = 'Link is accessible and working';
           break;
-        case 301:
-        case 302:
+        case 'redirect':
           statusClass = 'status-redirect';
           statusText = 'Redirected';
           statusIcon = '🔄';
           tooltip = 'Link redirects to another URL';
           break;
-        case 404:
-        case 500:
+        case 'broken':
           statusClass = 'status-broken';
           statusText = 'Broken';
           statusIcon = '❌';
@@ -188,21 +185,22 @@ document.addEventListener('DOMContentLoaded', () => {
           break;
         case 'timeout':
           statusClass = 'status-timeout';
-          statusText = 'Timed Out';
+          statusText = 'Timeout';
           statusIcon = '🕒';
           tooltip = 'Request timed out after 8 seconds';
           break;
+        case 'unreachable':
+          statusClass = 'status-unreachable';
+          statusText = 'Unreachable';
+          statusIcon = '🕒';
+          tooltip = 'Link could not be reached';
+          break;
         case 'risky':
           statusClass = 'status-risky';
-          statusText = 'Risky / Spam';
+          statusText = 'Risky';
           statusIcon = '⚠️';
           tooltip = 'Link is on a blacklisted domain';
           break;
-        default:
-          statusClass = 'status-unknown';
-          statusText = 'Unknown';
-          statusIcon = '❓';
-          tooltip = 'Unable to determine link status';
       }
 
       const faviconUrl = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(result.url)}`;
@@ -214,66 +212,27 @@ document.addEventListener('DOMContentLoaded', () => {
         details.push(result.error);
       }
 
-      row.innerHTML = `
-        <td><img src="${faviconUrl}" class="favicon" alt="Favicon"></td>
-        <td class="url"><a href="${result.url}" target="_blank">${result.url}</a></td>
-        <td><span class="status-tag ${statusClass}" data-tooltip="${tooltip}"><span class="status-icon">${statusIcon}</span> ${statusText}</span></td>
-        <td class="details">${details.join('<br>')}</td>
-        <td><button class="rescan-button" data-url="${result.url}">Rescan</button></td>
+      card.innerHTML = `
+        <img src="${faviconUrl}" class="favicon" alt="Favicon">
+        <a href="${result.url}" class="url" target="_blank">${result.url}</a>
+        <span class="status-tag ${statusClass}" data-tooltip="${tooltip}">
+          <span class="status-icon">${statusIcon}</span> ${statusText}
+        </span>
+        <div class="details">${details.join('<br>')}</div>
+        <div class="timestamp">Scanned: ${new Date(result.timestamp).toLocaleString()}</div>
       `;
 
-      container.appendChild(row);
+      container.appendChild(card);
     });
 
-    // Add rescan event listeners
-    document.querySelectorAll('.rescan-button').forEach(button => {
-      button.addEventListener('click', async () => {
-        const url = button.dataset.url;
-        console.log(`Rescanning URL: ${url}`);
-        const loadingOverlay = document.querySelector('.loading-overlay');
-        if (loadingOverlay) {
-          loadingOverlay.classList.remove('hidden');
-        }
-
-        try {
-          const result = await rescanLink(url);
-          const results = Array.from(document.querySelectorAll('#results-container tr')).map(row => {
-            const rowUrl = row.querySelector('.url a').href;
-            return rowUrl === url ? result : {
-              url: rowUrl,
-              status: row.querySelector('.status-tag').textContent.includes('OK') ? 200 :
-                      row.querySelector('.status-tag').textContent.includes('Redirected') ? 301 :
-                      row.querySelector('.status-tag').textContent.includes('Broken') ? 404 :
-                      row.querySelector('.status-tag').textContent.includes('Risky') ? 'risky' :
-                      row.querySelector('.status-tag').textContent.includes('Timed Out') ? 'timeout' : 'unknown',
-              redirectChain: row.querySelector('.details').textContent.includes('Redirect Chain') ?
-                            row.querySelector('.details').textContent.split('Redirect Chain: ')[1].split(' → ') : [],
-              isRisky: row.querySelector('.status-tag').textContent.includes('Risky'),
-              error: row.querySelector('.details').textContent.includes('Redirect Chain') ?
-                     null : row.querySelector('.details').textContent
-            };
-          });
-          displayResults(results);
-          updateHealthScore(results);
-          updateSummary(results);
-        } catch (error) {
-          console.error('Rescan failed:', error);
-          alert('Rescan failed. Please check the console for details.');
-        } finally {
-          if (loadingOverlay) {
-            loadingOverlay.classList.add('hidden');
-          }
-        }
-      });
-    });
-
-    // Toggle OK links
-    const toggleOk = document.getElementById('toggle-ok');
-    if (toggleOk) {
-      toggleOk.addEventListener('change', () => {
-        const okRows = document.querySelectorAll('#results-container tr.ok');
-        okRows.forEach(row => {
-          row.classList.toggle('hidden', toggleOk.checked);
+    // Toggle Risky/Broken
+    const toggleRiskyBroken = document.getElementById('toggle-risky-broken');
+    if (toggleRiskyBroken) {
+      toggleRiskyBroken.addEventListener('change', () => {
+        const cards = document.querySelectorAll('.result-card');
+        cards.forEach(card => {
+          const isRiskyOrBroken = card.classList.contains('risky') || card.classList.contains('broken');
+          card.style.display = toggleRiskyBroken.checked && !isRiskyOrBroken ? 'none' : 'block';
         });
       });
     }
@@ -282,9 +241,9 @@ document.addEventListener('DOMContentLoaded', () => {
   // Update Summary
   const updateSummary = (results) => {
     const total = results.length;
-    const ok = results.filter(r => r.status === 200).length;
-    const redirects = results.filter(r => r.status === 301 || r.status === 302).length;
-    const broken = results.filter(r => r.status === 404 || r.status === 500).length;
+    const ok = results.filter(r => r.status === 'ok').length;
+    const redirects = results.filter(r => r.status === 'redirect').length;
+    const broken = results.filter(r => r.status === 'broken').length;
     const risky = results.filter(r => r.status === 'risky').length;
 
     document.getElementById('summary-total').textContent = total;
@@ -296,7 +255,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Health Score
   const updateHealthScore = (results) => {
-    const validLinks = results.filter(r => r.status === 200).length;
+    const validLinks = results.filter(r => r.status === 'ok').length;
     const score = Math.round((validLinks / results.length) * 100);
     const healthScore = document.getElementById('health-score');
     const progressCircle = document.getElementById('progress-circle');
