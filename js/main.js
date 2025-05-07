@@ -1,4 +1,4 @@
-// Ensure DOM is fully loaded
+// Ensure DOM is fully loade
 document.addEventListener('DOMContentLoaded', () => {
   console.log('DOM fully loaded, initializing...');
 
