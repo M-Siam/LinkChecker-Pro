@@ -7,6 +7,9 @@ const scanLinks = async (urls) => {
   const timeoutDuration = 8000; // 8 seconds
 
   for (const url of urls) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutDuration);
+
     let result = {
       url,
       status: 'unknown',
@@ -24,38 +27,56 @@ const scanLinks = async (urls) => {
       if (result.isRisky) {
         result.status = 'risky';
         result.error = '⚠️ Phishing or Risky Link (Blacklisted Domain)';
+        clearTimeout(timeoutId);
         results.push(result);
         continue;
       }
 
-      // Use XMLHttpRequest for accurate status codes
-      const response = await new Promise((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-        xhr.open('HEAD', url, true);
-        xhr.timeout = timeoutDuration;
-        xhr.onreadystatechange = () => {
-          if (xhr.readyState === 4) {
-            resolve({
-              status: xhr.status,
-              url: xhr.responseURL || url,
-              ok: xhr.status >= 200 && xhr.status < 300,
-              redirected: xhr.responseURL && xhr.responseURL !== url
-            });
-          }
-        };
-        xhr.onerror = () => reject(new Error('Network error'));
-        xhr.ontimeout = () => reject(new Error('Timeout'));
-        xhr.send();
-      });
+      // Try fetch with CORS
+      let response;
+      try {
+        response = await fetch(url, {
+          method: 'HEAD',
+          mode: 'cors',
+          signal: controller.signal,
+          redirect: 'follow'
+        });
+        clearTimeout(timeoutId);
+      } catch (fetchError) {
+        console.warn(`Fetch failed for ${url}, trying XMLHttpRequest:`, fetchError);
+        // Fallback to XMLHttpRequest
+        response = await new Promise((resolve, reject) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open('HEAD', url, true);
+          xhr.timeout = timeoutDuration;
+          xhr.onreadystatechange = () => {
+            if (xhr.readyState === 4) {
+              resolve({
+                status: xhr.status || 0,
+                url: xhr.responseURL || url,
+                ok: xhr.status >= 200 && xhr.status < 300,
+                redirected: xhr.responseURL && xhr.responseURL !== url
+              });
+            }
+          };
+          xhr.onerror = () => reject(new Error('Network error'));
+          xhr.ontimeout = () => reject(new Error('Timeout'));
+          xhr.send();
+        });
+        clearTimeout(timeoutId);
+      }
 
       // Handle response
-      if (response.ok) {
+      if (response.status >= 200 && response.status < 300) {
         result.status = response.status;
       } else if (response.status >= 300 && response.status < 400) {
         result.status = response.status;
       } else if (response.status >= 400) {
         result.status = response.status;
         result.error = `HTTP Error: ${response.status}`;
+      } else {
+        result.status = 'unreachable';
+        result.error = 'No status code received';
       }
 
       if (response.redirected) {
@@ -64,7 +85,8 @@ const scanLinks = async (urls) => {
         result.redirectChain = [url];
       }
     } catch (error) {
-      if (error.message === 'Timeout') {
+      clearTimeout(timeoutId);
+      if (error.name === 'AbortError' || error.message === 'Timeout') {
         result.status = 'timeout';
         result.error = 'Request timed out after 8 seconds';
       } else {
@@ -78,7 +100,7 @@ const scanLinks = async (urls) => {
       result.status = 'broken';
     } else if (result.status >= 300 && result.status < 400) {
       result.status = 'redirect';
-    } else if (result.status === 200) {
+    } else if (result.status >= 200 && result.status < 300) {
       result.status = 'ok';
     }
 
