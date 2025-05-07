@@ -1,10 +1,11 @@
 // Export CSV
 const exportCSV = () => {
-  const results = Array.from(document.querySelectorAll('.result-item')).map(item => {
-    const url = item.querySelector('a').textContent;
-    const status = item.querySelector('.status-tag').textContent;
-    const isRisky = item.querySelector('.risk-warning') ? 'Yes' : 'No';
-    const redirectChain = item.querySelector('.redirect-chain')?.textContent.replace('Redirect Chain: ', '') || 'None';
+  const results = Array.from(document.querySelectorAll('#results-container tr')).map(row => {
+    const url = row.querySelector('.url a').textContent;
+    const status = row.querySelector('.status-tag').textContent.replace(/✔️|🔄|❌|🕒|⚠️|❓/, '').trim();
+    const isRisky = row.querySelector('.status-tag').textContent.includes('Risky') ? 'Yes' : 'No';
+    const redirectChain = row.querySelector('.details').textContent.includes('Redirect Chain') ?
+                          row.querySelector('.details').textContent.split('Redirect Chain: ')[1] : 'None';
     return `"${url.replace(/"/g, '""')}",${status},${isRisky},"${redirectChain.replace(/"/g, '""')}"`;
   });
 
@@ -26,6 +27,7 @@ const exportPDF = () => {
     <h1>LinkCheckr Pro Report</h1>
     <p>Generated: ${new Date().toLocaleString()}</p>
     <p>Link Health: ${document.getElementById('health-score').textContent}</p>
+    <p>Summary: Total: ${document.getElementById('summary-total').textContent} | OK: ${document.getElementById('summary-ok').textContent} | Redirects: ${document.getElementById('summary-redirects').textContent} | Broken: ${document.getElementById('summary-broken').textContent} | Risky: ${document.getElementById('summary-risky').textContent}</p>
     <h2>Results</h2>
     <table>
       <tr>
@@ -34,12 +36,12 @@ const exportPDF = () => {
         <th>Risky</th>
         <th>Redirect Chain</th>
       </tr>
-      ${Array.from(document.querySelectorAll('.result-item')).map(item => `
+      ${Array.from(document.querySelectorAll('#results-container tr')).map(row => `
         <tr>
-          <td>${item.querySelector('a').textContent}</td>
-          <td class="${item.querySelector('.status-tag').classList[1]}">${item.querySelector('.status-tag').textContent}</td>
-          <td>${item.querySelector('.risk-warning') ? 'Yes' : 'No'}</td>
-          <td>${item.querySelector('.redirect-chain')?.textContent.replace('Redirect Chain: ', '') || 'None'}</td>
+          <td>${row.querySelector('.url a').textContent}</td>
+          <td class="${row.querySelector('.status-tag').classList[1]}">${row.querySelector('.status-tag').textContent.replace(/✔️|🔄|❌|🕒|⚠️|❓/, '').trim()}</td>
+          <td>${row.querySelector('.status-tag').textContent.includes('Risky') ? 'Yes' : 'No'}</td>
+          <td>${row.querySelector('.details').textContent.includes('Redirect Chain') ? row.querySelector('.details').textContent.split('Redirect Chain: ')[1] : 'None'}</td>
         </tr>
       `).join('')}
     </table>
@@ -54,7 +56,7 @@ const exportPDF = () => {
     jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
   };
   html2pdf().set(opt).from(element).save().then(() => {
-    document.body.appendChild(element);
+    document.body.removeChild(element);
   });
 };
 
