@@ -25,7 +25,13 @@
       <h2>Check Your Links</h2>
       <textarea id="url-input" placeholder="Paste URLs (one per line, e.g., https://example.com)" rows="6"></textarea>
       <div class="input-controls">
-        <input type="file" id="file-input" accept=".txt,.csv">
+        <div class="file-upload">
+          <input type="file" id="file-input" accept=".txt,.csv">
+          <div class="file-name" id="file-name" style="display: none;">
+            <span></span>
+            <button class="clear-file" id="clear-file">✕</button>
+          </div>
+        </div>
         <button id="start-scan" class="glow-button">Start Scan</button>
       </div>
       <p>Total Links: <span id="link-count">0</span></p>
