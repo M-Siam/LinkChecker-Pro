@@ -22,14 +22,15 @@ const scanLinks = async (urls) => {
       const domain = new URL(url).hostname.toLowerCase();
       const isRisky = blacklist.some(b => domain === b || domain.endsWith(`.${b}`));
 
+      console.log(`Success for ${url}: Status ${status}`);
       return { url, status, redirectChain, isRisky, error };
     } catch (error) {
       console.warn(`Error scanning ${url}: ${error.message}`);
       const domain = new URL(url).hostname.toLowerCase();
       const isRisky = blacklist.some(b => domain === b || domain.endsWith(`.${b}`));
-      
-      // Handle CORS or timeout errors
-      let errorMessage = 'Unable to scan (possible CORS restriction or timeout)';
+
+      // Handle specific errors
+      let errorMessage = 'Unable to scan (possible CORS restriction)';
       if (error.name === 'AbortError') {
         errorMessage = 'Request timed out';
       } else if (error.message.includes('network error')) {
