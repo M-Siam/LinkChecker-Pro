@@ -29,7 +29,7 @@
         <button id="start-scan" class="glow-button">Start Scan</button>
       </div>
       <p>Total Links: <span id="link-count">0</span></p>
-      <p class="mock-notice">Note: Running in mock mode for testing (no real network requests).</p>
+      <p class="mock-notice">Note: Scanning uses mock data for some responses due to CORS limitations.</p>
     </section>
 
     <!-- Tips Panel -->
@@ -45,7 +45,24 @@
         <h3>Link Health: <span id="health-score">0%</span></h3>
         <div class="progress-circle" id="progress-circle"></div>
       </div>
-      <div id="results-container" class="accordion"></div>
+      <div class="results-summary">
+        <p>Total: <span id="summary-total">0</span> | OK: <span id="summary-ok">0</span> | Redirects: <span id="summary-redirects">0</span> | Broken: <span id="summary-broken">0</span> | Risky: <span id="summary-risky">0</span></p>
+        <label class="toggle-ok"><input type="checkbox" id="toggle-ok"> Hide OK Links</label>
+      </div>
+      <div class="results-table-container">
+        <table id="results-container">
+          <thead>
+            <tr>
+              <th>Favicon</th>
+              <th>URL</th>
+              <th>Status</th>
+              <th>Details</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
       <div class="export-controls">
         <button id="export-csv" class="glow-button">Export CSV</button>
         <button id="export-pdf" class="glow-button">Export PDF</button>
