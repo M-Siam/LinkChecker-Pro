@@ -6,20 +6,22 @@
   <title>LinkCheckr Pro</title>
   <link rel="stylesheet" href="css/style.css">
   <link rel="icon" href="assets/favicon.png" type="image/png">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body class="dark-mode">
   <!-- Header -->
-  <header class="hero">
+  <header class="hero card">
     <img src="assets/logo.svg" alt="LinkCheckr Pro Logo" class="logo">
     <h1>LinkCheckr Pro</h1>
-    <button id="theme-toggle" aria-label="Toggle Theme">🌙</button>
+    <div class="theme-switch" id="theme-toggle" aria-label="Toggle Theme">
+      <div class="theme-slider"></div>
+    </div>
   </header>
 
   <!-- Main Content -->
   <main>
     <!-- Input Section -->
-    <section class="input-section glass">
+    <section class="input-section card animated">
       <h2>Check Your Links</h2>
       <textarea id="url-input" placeholder="Paste URLs (one per line, e.g., https://example.com)" rows="6"></textarea>
       <div class="input-controls">
@@ -31,13 +33,13 @@
     </section>
 
     <!-- Tips Panel -->
-    <section class="tips-panel glass">
+    <section class="tips-panel card animated">
       <h3>Smart Tip</h3>
-      <p id="tip-text">Paste your links to start scanning!</p>
+      <p id="tip-text" class="tip-text">Paste your links to start scanning!</p>
     </section>
 
     <!-- Results Section -->
-    <section class="results-section hidden">
+    <section class="results-section card hidden">
       <h2>Scan Results</h2>
       <div class="health-score">
         <h3>Link Health: <span id="health-score">0%</span></h3>
@@ -52,7 +54,7 @@
   </main>
 
   <!-- Footer -->
-  <footer>
+  <footer class="card">
     <p>Built Free by [YourName]</p>
   </footer>
 
