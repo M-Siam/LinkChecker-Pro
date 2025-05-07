@@ -249,6 +249,7 @@ main {
   border-top: 6px solid #0288d1;
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
+  box-shadow: 0 0 20px rgba(2, 136, 209, 0.7);
 }
 
 /* Footer */
@@ -261,6 +262,13 @@ footer {
   bottom: 0;
   width: 100%;
   box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.3);
+}
+
+/* Mock Notice */
+.mock-notice {
+  font-size: 0.9rem;
+  color: #ffb300;
+  margin-top: 1rem;
 }
 
 /* Animations */
