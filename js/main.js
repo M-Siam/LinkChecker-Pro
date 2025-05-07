@@ -36,12 +36,13 @@ const linkCount = document.getElementById('link-count');
 
 const isValidUrl = (string) => {
   try {
-    // Ensure URL has protocol (http:// or https://)
-    if (!string.startsWith('http://') && !string.startsWith('https://')) {
-      string = 'https://' + string;
+    // Normalize URL by adding https:// if no protocol is specified
+    let url = string.trim();
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      url = 'https://' + url;
     }
-    new URL(string);
-    return string;
+    new URL(url);
+    return url;
   } catch (_) {
     return false;
   }
@@ -70,29 +71,36 @@ fileInput.addEventListener('change', (e) => {
 
 // Start Scan
 document.getElementById('start-scan').addEventListener('click', async () => {
+  console.log('Start Scan button clicked');
   const rawUrls = urlInput.value.split('\n').map(url => url.trim()).filter(url => url);
   const urls = rawUrls.map(url => isValidUrl(url)).filter(url => url);
-  
+
   if (!urls.length) {
     alert('Please enter at least one valid URL (e.g., https://example.com).');
+    console.warn('No valid URLs provided');
     return;
   }
 
   if (urls.length < rawUrls.length) {
     alert('Some URLs were invalid and skipped. Ensure URLs include http:// or https://.');
+    console.warn('Invalid URLs skipped:', rawUrls.filter(url => !isValidUrl(url)));
   }
 
   const loadingOverlay = document.querySelector('.loading-overlay');
   const resultsSection = document.querySelector('.results-section');
-  
+
+  console.log('Showing loading overlay');
   loadingOverlay.classList.remove('hidden');
   resultsSection.classList.add('hidden');
 
   try {
+    console.log('Initiating scan for URLs:', urls);
     const results = await scanLinks(urls); // From scanner.js
+    console.log('Displaying results');
     displayResults(results);
     updateHealthScore(results);
-    
+
+    console.log('Hiding loading overlay, showing results');
     loadingOverlay.classList.add('hidden');
     resultsSection.classList.remove('hidden');
     window.scrollTo({ top: resultsSection.offsetTop, behavior: 'smooth' });
@@ -105,6 +113,7 @@ document.getElementById('start-scan').addEventListener('click', async () => {
 
 // Display Results
 const displayResults = (results) => {
+  console.log('Rendering results:', results);
   const container = document.getElementById('results-container');
   container.innerHTML = '';
 
