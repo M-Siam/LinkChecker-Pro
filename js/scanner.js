@@ -1,10 +1,9 @@
-const blacklistSet = new Set(blacklist); // Optimize lookup
+const blacklistSet = new Set(blacklist);
 
 const scanLinks = async (urls) => {
   console.log('Scanning URLs:', urls);
-
   const results = [];
-  const timeoutDuration = 8000; // 8 seconds
+  const timeoutDuration = 8000;
 
   for (const url of urls) {
     const controller = new AbortController();
@@ -20,7 +19,6 @@ const scanLinks = async (urls) => {
     };
 
     try {
-      // Check blacklist first
       const domain = new URL(url).hostname.toLowerCase();
       result.isRisky = blacklistSet.has(domain) || Array.from(blacklistSet).some(b => domain.endsWith(`.${b}`));
 
@@ -32,19 +30,17 @@ const scanLinks = async (urls) => {
         continue;
       }
 
-      // Try fetch with CORS
       let response;
       try {
         response = await fetch(url, {
           method: 'HEAD',
           mode: 'cors',
           signal: controller.signal,
-          redirect: 'follow'
+          redirect: 'manual' // Manual redirect to track chain
         });
         clearTimeout(timeoutId);
       } catch (fetchError) {
         console.warn(`Fetch failed for ${url}, trying XMLHttpRequest:`, fetchError);
-        // Fallback to XMLHttpRequest
         response = await new Promise((resolve, reject) => {
           const xhr = new XMLHttpRequest();
           xhr.open('HEAD', url, true);
@@ -55,7 +51,8 @@ const scanLinks = async (urls) => {
                 status: xhr.status || 0,
                 url: xhr.responseURL || url,
                 ok: xhr.status >= 200 && xhr.status < 300,
-                redirected: xhr.responseURL && xhr.responseURL !== url
+                redirected: xhr.responseURL && xhr.responseURL !== url,
+                headers: { location: xhr.getResponseHeader('Location') }
               });
             }
           };
@@ -66,7 +63,42 @@ const scanLinks = async (urls) => {
         clearTimeout(timeoutId);
       }
 
-      // Handle response
+      // Handle redirect chain
+      let currentUrl = url;
+      result.redirectChain = [url];
+      while (response.status >= 300 && response.status < 400 && response.headers?.location) {
+        currentUrl = response.headers.location;
+        result.redirectChain.push(currentUrl);
+        try {
+          response = await fetch(currentUrl, {
+            method: 'HEAD',
+            mode: 'cors',
+            signal: controller.signal,
+            redirect: 'manual'
+          });
+        } catch (fetchError) {
+          response = await new Promise((resolve, reject) => {
+            const xhr = new XMLHttpRequest();
+            xhr.open('HEAD', currentUrl, true);
+            xhr.timeout = timeoutDuration;
+            xhr.onreadystatechange = () => {
+              if (xhr.readyState === 4) {
+                resolve({
+                  status: xhr.status || 0,
+                  url: xhr.responseURL || currentUrl,
+                  ok: xhr.status >= 200 && xhr.status < 300,
+                  redirected: xhr.responseURL && xhr.responseURL !== currentUrl,
+                  headers: { location: xhr.getResponseHeader('Location') }
+                });
+              }
+            };
+            xhr.onerror = () => reject(new Error('Network error'));
+            xhr.ontimeout = () => reject(new Error('Timeout'));
+            xhr.send();
+          });
+        }
+      }
+
       if (response.status >= 200 && response.status < 300) {
         result.status = response.status;
       } else if (response.status >= 300 && response.status < 400) {
@@ -77,12 +109,6 @@ const scanLinks = async (urls) => {
       } else {
         result.status = 'unreachable';
         result.error = 'No status code received';
-      }
-
-      if (response.redirected) {
-        result.redirectChain = [url, response.url];
-      } else {
-        result.redirectChain = [url];
       }
     } catch (error) {
       clearTimeout(timeoutId);
@@ -95,7 +121,7 @@ const scanLinks = async (urls) => {
       }
     }
 
-    // Classify status for sorting
+    // Classify status
     if (result.status >= 400) {
       result.status = 'broken';
     } else if (result.status >= 300 && result.status < 400) {
@@ -108,7 +134,7 @@ const scanLinks = async (urls) => {
     results.push(result);
   }
 
-  // Sort results: Risky > Broken > Redirect > OK
+  // Sort results
   results.sort((a, b) => {
     const order = { risky: 0, broken: 1, redirect: 2, ok: 3, timeout: 4, unreachable: 5 };
     return order[a.status] - order[b.status];
