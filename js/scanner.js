@@ -1,145 +1,102 @@
-const blacklistSet = new Set(blacklist);
-
-const scanLinks = async (urls) => {
-  console.log('Scanning URLs:', urls);
+async function scanLinks(urls) {
+  console.log('Starting link scan for:', urls);
   const results = [];
-  const timeoutDuration = 8000;
+  const useProxy = false; // Toggle for CORS proxy (can be made dynamic in UI)
+  const proxyUrl = 'https://cors-anywhere.herokuapp.com/'; // Public CORS proxy (requires activation)
 
   for (const url of urls) {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeoutDuration);
-
-    let result = {
+    const result = {
       url,
       status: 'unknown',
-      redirectChain: [],
-      isRisky: false,
+      redirectChain: [url],
       error: null,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      isRisky: blacklist.includes(new URL(url).hostname)
     };
 
+    // Validate URL format
     try {
-      const domain = new URL(url).hostname.toLowerCase();
-      result.isRisky = blacklistSet.has(domain) || Array.from(blacklistSet).some(b => domain.endsWith(`.${b}`));
+      new URL(url);
+    } catch (e) {
+      result.status = 'invalid';
+      result.error = 'Invalid URL format';
+      results.push(result);
+      console.warn(`Invalid URL: ${url}`, e);
+      continue;
+    }
 
-      if (result.isRisky) {
-        result.status = 'risky';
-        result.error = '⚠️ Phishing or Risky Link (Blacklisted Domain)';
-        clearTimeout(timeoutId);
-        results.push(result);
-        continue;
+    // Check if URL is blacklisted
+    if (result.isRisky) {
+      result.status = 'risky';
+      result.error = 'Domain is blacklisted';
+      results.push(result);
+      console.log(`Blacklisted URL: ${url}`);
+      continue;
+    }
+
+    // Set up timeout and fetch
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+    const fetchUrl = useProxy ? `${proxyUrl}${url}` : url;
+
+    try {
+      const response = await fetch(fetchUrl, {
+        method: 'HEAD', // Lightweight request
+        redirect: 'follow', // Follow redirects
+        signal: controller.signal,
+        headers: {
+          'Accept': '*/*',
+          'User-Agent': 'LinkCheckrPro/1.0'
+        },
+        mode: 'cors'
+      });
+
+      clearTimeout(timeoutId);
+
+      // Capture redirect chain
+      if (response.redirected) {
+        result.redirectChain = [url, response.url];
+        console.log(`Redirect detected for ${url}: ${result.redirectChain.join(' → ')}`);
       }
 
-      let response;
-      try {
-        response = await fetch(url, {
-          method: 'HEAD',
-          mode: 'cors',
-          signal: controller.signal,
-          redirect: 'manual' // Manual redirect to track chain
-        });
-        clearTimeout(timeoutId);
-      } catch (fetchError) {
-        console.warn(`Fetch failed for ${url}, trying XMLHttpRequest:`, fetchError);
-        response = await new Promise((resolve, reject) => {
-          const xhr = new XMLHttpRequest();
-          xhr.open('HEAD', url, true);
-          xhr.timeout = timeoutDuration;
-          xhr.onreadystatechange = () => {
-            if (xhr.readyState === 4) {
-              resolve({
-                status: xhr.status || 0,
-                url: xhr.responseURL || url,
-                ok: xhr.status >= 200 && xhr.status < 300,
-                redirected: xhr.responseURL && xhr.responseURL !== url,
-                headers: { location: xhr.getResponseHeader('Location') }
-              });
-            }
-          };
-          xhr.onerror = () => reject(new Error('Network error'));
-          xhr.ontimeout = () => reject(new Error('Timeout'));
-          xhr.send();
-        });
-        clearTimeout(timeoutId);
-      }
-
-      // Handle redirect chain
-      let currentUrl = url;
-      result.redirectChain = [url];
-      while (response.status >= 300 && response.status < 400 && response.headers?.location) {
-        currentUrl = response.headers.location;
-        result.redirectChain.push(currentUrl);
-        try {
-          response = await fetch(currentUrl, {
-            method: 'HEAD',
-            mode: 'cors',
-            signal: controller.signal,
-            redirect: 'manual'
-          });
-        } catch (fetchError) {
-          response = await new Promise((resolve, reject) => {
-            const xhr = new XMLHttpRequest();
-            xhr.open('HEAD', currentUrl, true);
-            xhr.timeout = timeoutDuration;
-            xhr.onreadystatechange = () => {
-              if (xhr.readyState === 4) {
-                resolve({
-                  status: xhr.status || 0,
-                  url: xhr.responseURL || currentUrl,
-                  ok: xhr.status >= 200 && xhr.status < 300,
-                  redirected: xhr.responseURL && xhr.responseURL !== currentUrl,
-                  headers: { location: xhr.getResponseHeader('Location') }
-                });
-              }
-            };
-            xhr.onerror = () => reject(new Error('Network error'));
-            xhr.ontimeout = () => reject(new Error('Timeout'));
-            xhr.send();
-          });
-        }
-      }
-
-      if (response.status >= 200 && response.status < 300) {
-        result.status = response.status;
-      } else if (response.status >= 300 && response.status < 400) {
-        result.status = response.status;
-      } else if (response.status >= 400) {
-        result.status = response.status;
-        result.error = `HTTP Error: ${response.status}`;
+      // Categorize status based on HTTP code
+      const statusCode = response.status;
+      if (statusCode === 200) {
+        result.status = 'ok';
+      } else if (statusCode === 301 || statusCode === 302) {
+        result.status = 'redirect';
+      } else if (statusCode >= 400 && statusCode < 600) {
+        result.status = 'broken';
+        result.error = `HTTP ${statusCode} ${response.statusText}`;
       } else {
-        result.status = 'unreachable';
-        result.error = 'No status code received';
+        result.status = 'unknown';
+        result.error = `Unexpected status: ${statusCode}`;
       }
+
+      console.log(`Scan result for ${url}: ${result.status}`);
     } catch (error) {
       clearTimeout(timeoutId);
-      if (error.name === 'AbortError' || error.message === 'Timeout') {
+
+      if (error.name === 'AbortError') {
         result.status = 'timeout';
-        result.error = 'Request timed out after 8 seconds';
-      } else {
+        result.error = 'Request timed out after 10 seconds';
+      } else if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
+        // Likely CORS or DNS issue
         result.status = 'unreachable';
-        result.error = `Unreachable: ${error.message}`;
+        result.error = 'Unable to reach server (possible CORS or DNS issue)';
+        // Suggest CORS proxy
+        result.error += '. Try enabling CORS proxy in settings (e.g., cors-anywhere.herokuapp.com).';
+      } else {
+        result.status = 'unknown';
+        result.error = error.message || 'Unknown error occurred';
       }
+
+      console.warn(`Error scanning ${url}:`, error);
     }
 
-    // Classify status
-    if (result.status >= 400) {
-      result.status = 'broken';
-    } else if (result.status >= 300 && result.status < 400) {
-      result.status = 'redirect';
-    } else if (result.status >= 200 && result.status < 300) {
-      result.status = 'ok';
-    }
-
-    console.log(`Result for ${url}:`, result);
     results.push(result);
   }
 
-  // Sort results
-  results.sort((a, b) => {
-    const order = { risky: 0, broken: 1, redirect: 2, ok: 3, timeout: 4, unreachable: 5 };
-    return order[a.status] - order[b.status];
-  });
-
-  console.log('Scan results:', results);
+  console.log('Scan completed:', results);
   return results;
-};
+}
