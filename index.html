@@ -6,7 +6,7 @@
   <title>LinkCheckr Pro</title>
   <link rel="stylesheet" href="css/style.css">
   <link rel="icon" href="assets/favicon.ico" type="image/x-icon">
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 </head>
 <body class="dark-mode">
   <!-- Header -->
@@ -38,11 +38,15 @@
         <button id="start-scan" class="glow-button">Start Scan</button>
       </div>
       <p>Total Links: <span id="link-count">0</span></p>
+      <div class="scan-progress hidden" id="scan-progress">
+        <div class="progress-bar" id="progress-bar"></div>
+        <p>Scanning: <span id="scan-status">0/0 URLs</span></p>
+      </div>
     </section>
 
     <!-- Right Part: Results and Actions -->
     <section class="results-section card">
-      <!-- Tips Panel (Toggleable on PC, Integrated on Mobile) -->
+      <!-- Tips Panel -->
       <div class="tips-panel hidden">
         <h3>Smart Tip</h3>
         <p id="tip-text" class="tip-text"></p>
@@ -57,7 +61,14 @@
         </div>
         <div class="health-score">
           <h3>Link Health: <span id="health-score">0%</span></h3>
-          <div class="progress-circle" id="progress-circle"></div>
+          <div class="progress-circle" id="progress-circle">
+            <div class="stats-popup hidden" id="stats-popup">
+              <p>OK: <span id="popup-ok">0</span></p>
+              <p>Redirects: <span id="popup-redirects">0</span></p>
+              <p>Broken: <span id="popup-broken">0</span></p>
+              <p>Risky: <span id="popup-risky">0</span></p>
+            </div>
+          </div>
         </div>
         <div class="results-summary">
           <p>Total: <span id="summary-total">0</span> | OK: <span id="summary-ok">0</span> | Redirects: <span id="summary-redirects">0</span> | Broken: <span id="summary-broken">0</span> | Risky: <span id="summary-risky">0</span></p>
@@ -84,6 +95,7 @@
           <button id="copy-summary" class="glow-button secondary">Copy Summary</button>
           <button id="export-pdf" class="glow-button">Export PDF</button>
           <button id="export-csv" class="glow-button">Export CSV</button>
+          <button id="batch-actions" class="glow-button secondary">Batch Actions</button>
           <button id="show-tips" class="glow-button secondary">Show Tips</button>
         </div>
       </div>
