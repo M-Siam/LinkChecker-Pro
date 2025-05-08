@@ -243,14 +243,20 @@ document.addEventListener('DOMContentLoaded', () => {
         case 'timeout':
           statusClass = 'status-timeout';
           statusText = 'Timeout';
-          statusIcon = '🕒';
+          statusIcon = '⚠️';
           tooltip = 'Request timed out';
           break;
         case 'unreachable':
           statusClass = 'status-unreachable';
           statusText = 'Unreachable';
-          statusIcon = '🕒';
+          statusIcon = '⚠️';
           tooltip = 'Link could not be reached';
+          break;
+        case 'invalid':
+          statusClass = 'status-invalid';
+          statusText = 'Invalid';
+          statusIcon = '🛑';
+          tooltip = 'Invalid URL format';
           break;
         case 'risky':
           statusClass = 'status-risky';
@@ -258,12 +264,17 @@ document.addEventListener('DOMContentLoaded', () => {
           statusIcon = '⚠️';
           tooltip = 'Blacklisted domain';
           break;
+        default:
+          statusClass = 'status-unknown';
+          statusText = 'Unknown';
+          statusIcon = '⚠️';
+          tooltip = 'Unknown error';
       }
 
       const faviconUrl = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(result.url)}`;
       const details = [];
       if (result.redirectChain.length > 1) {
-        details.push(`Redirect Chain: ${result.redirectChain.join(' ➜ ')}`);
+        details.push(`Redirect Chain: ${result.redirectChain.join(' → ')}`);
       }
       if (result.error) {
         details.push(result.error);
@@ -311,7 +322,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const resultA = results.find(r => r.url === a.querySelector('.url').textContent);
         const resultB = results.find(r => r.url === b.querySelector('.url').textContent);
         if (sortValue === 'status') {
-          const order = { risky: 0, broken: 1, redirect: 2, ok: 3, timeout: 4, unreachable: 5 };
+          const order = { risky: 0, broken: 1, redirect: 2, ok: 3, timeout: 4, unreachable: 5, invalid: 6, unknown: 7 };
           return order[resultA.status] - order[resultB.status];
         } else if (sortValue === 'url') {
           return resultA.url.localeCompare(resultB.url);
