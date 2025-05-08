@@ -32,6 +32,9 @@
             <button class="clear-file" id="clear-file">✕</button>
           </div>
         </div>
+        <label class="proxy-toggle">
+          <input type="checkbox" id="use-proxy"> Use CORS Proxy
+        </label>
         <button id="start-scan" class="glow-button">Start Scan</button>
       </div>
       <p>Total Links: <span id="link-count">0</span></p>
@@ -67,6 +70,7 @@
               <option value="risky">Risky</option>
               <option value="timeout">Timeout</option>
               <option value="unreachable">Unreachable</option>
+              <option value="invalid">Invalid</option>
             </select>
             <select id="sort-by">
               <option value="status">Sort by Status</option>
