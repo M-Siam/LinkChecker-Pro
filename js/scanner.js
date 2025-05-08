@@ -42,7 +42,7 @@ async function scanLinks(urls) {
       continue;
     }
 
-    // Attempt scanning with HTTP/HTTPS
+    // Attempt scanning with HTTP/HTTPS and optional proxy
     const protocols = [normalizedUrl];
     if (normalizedUrl.startsWith('http://')) {
       protocols.push(normalizedUrl.replace('http://', 'https://'));
@@ -50,97 +50,90 @@ async function scanLinks(urls) {
 
     let response = null;
     let lastError = null;
+    let triedProxy = false;
+
     for (const tryUrl of protocols) {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
-      const fetchUrl = useProxy ? `${proxyUrl}${tryUrl}` : tryUrl;
+      const attempts = [tryUrl];
+      if (!triedProxy && useProxy) {
+        attempts.push(`${proxyUrl}${tryUrl}`);
+      }
 
-      try {
-        response = await fetch(fetchUrl, {
-          method: 'HEAD',
-          redirect: 'manual', // Manual redirect to capture status
-          signal: controller.signal,
-          headers: {
-            'Accept': '*/*',
-            'User-Agent': 'LinkCheckrPro/1.0'
-          },
-          mode: 'cors'
-        });
+      for (const fetchUrl of attempts) {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
 
-        clearTimeout(timeoutId);
-        lastError = null;
+        try {
+          response = await fetch(fetchUrl, {
+            method: 'HEAD',
+            redirect: 'follow', // Follow redirects to capture chain
+            signal: controller.signal,
+            headers: {
+              'Accept': '*/*',
+              'User-Agent': 'LinkCheckrPro/1.0'
+            },
+            mode: 'cors'
+          });
+
+          clearTimeout(timeoutId);
+
+          // Capture redirect chain
+          if (response.redirected && response.url !== tryUrl) {
+            result.redirectChain = [tryUrl, response.url];
+            result.status = 'redirect';
+            console.log(`Redirect for ${url}: ${result.redirectChain.join(' → ')}`);
+          } else if (response.status === 301 || response.status === 302) {
+            result.status = 'redirect';
+            const redirectUrl = response.headers.get('location');
+            if (redirectUrl && !result.redirectChain.includes(redirectUrl)) {
+              result.redirectChain.push(redirectUrl);
+              console.log(`Redirect header for ${url}: ${result.redirectChain.join(' → ')}`);
+            }
+          }
+
+          // Categorize status
+          const statusCode = response.status;
+          if (statusCode === 200) {
+            result.status = result.status === 'redirect' ? 'redirect' : 'ok';
+          } else if (statusCode === 301 || statusCode === 302) {
+            result.status = 'redirect';
+          } else if (statusCode >= 400 && statusCode < 600) {
+            result.status = 'broken';
+            result.error = `HTTP ${statusCode} ${response.statusText}`;
+          } else {
+            result.status = 'unknown';
+            result.error = `Unexpected status: ${statusCode}`;
+          }
+
+          lastError = null;
+          console.log(`Scan result for ${url}: ${result.status}`);
+          break; // Success, exit attempts loop
+        } catch (error) {
+          clearTimeout(timeoutId);
+          lastError = error;
+          console.warn(`Fetch failed for ${fetchUrl}:`, error);
+        }
+
+        if (fetchUrl.startsWith(proxyUrl)) {
+          triedProxy = true;
+        }
+      }
+
+      if (response) {
         break; // Success, exit protocol loop
-      } catch (error) {
-        clearTimeout(timeoutId);
-        lastError = error;
-        console.warn(`Fetch failed for ${tryUrl}:`, error);
       }
     }
 
-    if (response) {
-      // Handle status codes
-      const statusCode = response.status;
-      if (statusCode === 200) {
-        result.status = 'ok';
-      } else if (statusCode === 301 || statusCode === 302) {
-        result.status = 'redirect';
-        const redirectUrl = response.headers.get('location');
-        if (redirectUrl) {
-          result.redirectChain.push(redirectUrl);
-          console.log(`Redirect for ${url}: ${result.redirectChain.join(' → ')}`);
-          // Follow redirect manually (up to 3 hops)
-          let hops = 0;
-          let currentUrl = redirectUrl;
-          while (hops < 3 && (statusCode === 301 || statusCode === 302)) {
-            const hopController = new AbortController();
-            const hopTimeout = setTimeout(() => hopController.abort(), 5000);
-            try {
-              const hopResponse = await fetch(useProxy ? `${proxyUrl}${currentUrl}` : currentUrl, {
-                method: 'HEAD',
-                redirect: 'manual',
-                signal: hopController.signal,
-                headers: { 'Accept': '*/*', 'User-Agent': 'LinkCheckrPro/1.0' },
-                mode: 'cors'
-              });
-              clearTimeout(hopTimeout);
-              if (hopResponse.status === 301 || hopResponse.status === 302) {
-                currentUrl = hopResponse.headers.get('location');
-                if (currentUrl) {
-                  result.redirectChain.push(currentUrl);
-                }
-              } else if (hopResponse.status === 200) {
-                result.status = 'ok'; // Final destination is OK
-                break;
-              } else {
-                result.status = 'broken';
-                result.error = `HTTP ${hopResponse.status} ${hopResponse.statusText}`;
-                break;
-              }
-              hops++;
-            } catch (error) {
-              clearTimeout(hopTimeout);
-              result.status = 'unreachable';
-              result.error = `Redirect follow failed: ${error.message}`;
-              break;
-            }
-          }
-        }
-      } else if (statusCode >= 400 && statusCode < 600) {
-        result.status = 'broken';
-        result.error = `HTTP ${statusCode} ${response.statusText}`;
-      } else {
-        result.status = 'unknown';
-        result.error = `Unexpected status: ${statusCode}`;
-      }
-      console.log(`Scan result for ${url}: ${result.status}`);
-    } else {
+    if (!response && lastError) {
       // Handle errors
       if (lastError.name === 'AbortError') {
         result.status = 'timeout';
         result.error = 'Request timed out after 10 seconds';
       } else if (lastError.name === 'TypeError' && lastError.message.includes('Failed to fetch')) {
         result.status = 'unreachable';
-        result.error = 'Unable to reach server (possible CORS, DNS, or protocol issue). Try enabling CORS proxy or HTTPS.';
+        result.error = 'Unable to reach server (possible CORS, DNS, or protocol issue).';
+        if (!triedProxy) {
+          result.error += ' Try enabling CORS proxy (e.g., cors-anywhere.herokuapp.com) or using HTTPS.';
+        }
       } else {
         result.status = 'unknown';
         result.error = lastError.message || 'Unknown error occurred';
