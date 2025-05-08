@@ -10,7 +10,7 @@ body {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  transition: background 0.4s ease;
+  transition: background 0.4s ease, color 0.4s ease;
   padding-bottom: min(10vw, 4rem); /* Space for footer */
 }
 
@@ -33,7 +33,7 @@ body.dark-mode {
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
   padding: min(4vw, 2rem);
   backdrop-filter: blur(10px);
-  transition: transform 0.3s ease;
+  transition: transform 0.3s ease, background 0.4s ease;
 }
 
 .dark-mode .card {
@@ -127,6 +127,14 @@ h2 {
   font-weight: 600;
 }
 
+.light-mode h2 {
+  color: #1a1c23;
+}
+
+.dark-mode h2 {
+  color: #ffffff;
+}
+
 #url-input {
   width: 100%;
   padding: min(3vw, 1rem);
@@ -136,7 +144,7 @@ h2 {
   color: #1a1c23;
   font-size: clamp(0.875rem, 2.5vw, 1rem);
   resize: vertical;
-  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease, background 0.4s ease;
 }
 
 .dark-mode #url-input {
@@ -227,7 +235,7 @@ h2 {
   font-size: clamp(0.875rem, 2.5vw, 1rem);
   font-weight: 500;
   cursor: pointer;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.4s ease;
   min-height: min(12vw, 48px);
 }
 
@@ -328,8 +336,8 @@ h2 {
 }
 
 .progress-circle {
-  width: min(20vw, 100px);
-  height: min(20vw, 100px);
+  width: clamp(60px, 15vw, 80px);
+  height: clamp(60px, 15vw, 80px);
   border-radius: 50%;
   margin: min(2vw, 1rem) auto;
   transition: transform 0.5s ease;
@@ -337,12 +345,22 @@ h2 {
 }
 
 .light-mode .progress-circle {
-  background: conic-gradient(#4CAF50 0% var(--progress), #e0e0e0 0%);
+  background: conic-gradient(
+    #ff5722 0% calc(var(--progress) * 0.33),
+    #ffb300 calc(var(--progress) * 0.33) calc(var(--progress) * 0.66),
+    #4CAF50 calc(var(--progress) * 0.66) var(--progress),
+    #e0e0e0 var(--progress) 100%
+  );
   box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
 }
 
 .dark-mode .progress-circle {
-  background: conic-gradient(#00FFE0 0% var(--progress), #262932 0%);
+  background: conic-gradient(
+    #ff5722 0% calc(var(--progress) * 0.33),
+    #ffb300 calc(var(--progress) * 0.33) calc(var(--progress) * 0.66),
+    #00FFE0 calc(var(--progress) * 0.66) var(--progress),
+    #262932 var(--progress) 100%
+  );
   box-shadow: 0 4px 12px rgba(0, 255, 224, 0.3);
 }
 
@@ -414,8 +432,9 @@ h2 {
   transition: transform 0.3s ease;
   animation: slideUp 0.5s ease;
   backdrop-filter: blur(8px);
+  width: 100%;
+  max-width: min(90%, 300px);
   min-height: min(40vw, 200px);
-  max-width: min(90%, 320px);
 }
 
 .dark-mode .result-card {
@@ -495,7 +514,7 @@ h2 {
 .result-card .status-tag::after {
   content: attr(data-tooltip);
   position: absolute;
-  top: calc(-1 * min(8vw, 2.5rem));
+  top: calc(-1 * min(10vw, 3rem));
   left: 50%;
   transform: translateX(-50%);
   background: #1a1c23;
@@ -507,10 +526,14 @@ h2 {
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.2s ease;
+  z-index: 1000;
+  max-width: min(80vw, 300px);
+  text-align: center;
 }
 
 .dark-mode .result-card .status-tag::after {
   background: #262932;
+  color: #ffffff;
 }
 
 .result-card .status-tag:hover::after {
@@ -621,7 +644,7 @@ h2 {
   left: 0;
   width: 100%;
   display: flex;
-  justify-content: space-between;
+  justify-content: center;
   align-items: center;
   padding: min(2vw, 1rem);
   margin: 0;
@@ -632,33 +655,28 @@ h2 {
 .footer p {
   font-size: clamp(0.75rem, 2vw, 0.875rem);
   color: #6b7280;
+  text-align: center;
 }
 
 .dark-mode .footer p {
   color: #c0c3cf;
 }
 
-.footer-nav {
-  display: flex;
-  gap: min(2vw, 1rem);
-}
-
-.footer-nav a {
-  font-size: clamp(0.75rem, 2vw, 0.875rem);
+.footer a {
   color: #3D5AFE;
   text-decoration: none;
   transition: color 0.2s ease;
 }
 
-.dark-mode .footer-nav a {
+.dark-mode .footer a {
   color: #00C8FF;
 }
 
-.footer-nav a:hover {
+.footer a:hover {
   color: #8c9eff;
 }
 
-.dark-mode .footer-nav a:hover {
+.dark-mode .footer a:hover {
   color: #00FFE0;
 }
 
