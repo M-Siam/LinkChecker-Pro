@@ -18,34 +18,40 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   const themeToggle = document.getElementById('theme-toggle');
-  if (themeToggle) {
-    themeToggle.addEventListener('click', toggleTheme);
-  } else {
-    console.error('Theme toggle button not found');
-  }
+  themeToggle.addEventListener('click', toggleTheme);
 
   // Smart Tips
-  const tips = [
-    'Too many redirects hurt SEO.',
-    'Broken links reduce user trust.',
-    'Check links monthly to stay clean.'
-  ];
-
-  const showRandomTip = () => {
+  const showTip = () => {
     const tipText = document.getElementById('tip-text');
-    if (tipText) {
-      tipText.textContent = tips[Math.floor(Math.random() * tips.length)];
-    }
+    tipText.textContent = tips[Math.floor(Math.random() * tips.length)];
   };
-  showRandomTip();
-  setInterval(showRandomTip, 5000);
+
+  // Toast Notification
+  const showToast = (message, type = 'success') => {
+    const toastContainer = document.getElementById('toast-container');
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.innerHTML = `<span class="toast-icon">${type === 'success' ? '✅' : '❌'}</span> ${message}`;
+    toastContainer.appendChild(toast);
+    setTimeout(() => toast.remove(), 3000);
+  };
+
+  // Play Scan Complete Sound
+  const playScanCompleteSound = () => {
+    const audio = new Audio('assets/complete.mp3');
+    audio.play().catch(err => console.warn('Audio playback failed:', err));
+  };
 
   // Link Input Handling
   const urlInput = document.getElementById('url-input');
   const fileInput = document.getElementById('file-input');
+  const fileUpload = document.getElementById('file-upload');
   const fileNameContainer = document.getElementById('file-name');
   const clearFileButton = document.getElementById('clear-file');
   const linkCount = document.getElementById('link-count');
+  const tipsPanel = document.querySelector('.tips-panel');
+  const resultsSection = document.querySelector('.results-section');
+  const loadingOverlay = document.querySelector('.loading-overlay');
 
   const isValidUrl = (string) => {
     try {
@@ -66,107 +72,114 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log('Updated link count:', urls.length);
   };
 
-  if (urlInput) {
-    urlInput.addEventListener('input', updateLinkCount);
-  } else {
-    console.error('URL input not found');
-  }
+  urlInput.addEventListener('input', updateLinkCount);
 
-  if (fileInput && fileNameContainer && clearFileButton) {
-    fileInput.addEventListener('change', (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
+  // Drag and Drop
+  fileUpload.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    fileUpload.classList.add('dragover');
+  });
 
+  fileUpload.addEventListener('dragleave', () => {
+    fileUpload.classList.remove('dragover');
+  });
+
+  fileUpload.addEventListener('drop', (e) => {
+    e.preventDefault();
+    fileUpload.classList.remove('dragover');
+    const file = e.dataTransfer.files[0];
+    if (file && (file.type === 'text/plain' || file.type === 'text/csv')) {
+      fileInput.files = e.dataTransfer.files;
       fileNameContainer.style.display = 'flex';
       fileNameContainer.querySelector('span').textContent = file.name;
-      console.log('File selected:', file.name);
-
       const reader = new FileReader();
       reader.onload = (event) => {
         const content = event.target.result;
         const urls = content.split('\n').map(url => url.trim()).filter(url => isValidUrl(url));
         urlInput.value = urls.join('\n');
         updateLinkCount();
-        console.log('File uploaded, URLs loaded:', urls);
+        showToast('File uploaded successfully');
       };
       reader.readAsText(file);
-    });
+    } else {
+      showToast('Please upload a .txt or .csv file', 'error');
+    }
+  });
 
-    clearFileButton.addEventListener('click', () => {
-      fileInput.value = '';
-      fileNameContainer.style.display = 'none';
-      fileNameContainer.querySelector('span').textContent = '';
-      urlInput.value = '';
+  fileInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    fileNameContainer.style.display = 'flex';
+    fileNameContainer.querySelector('span').textContent = file.name;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const content = event.target.result;
+      const urls = content.split('\n').map(url => url.trim()).filter(url => isValidUrl(url));
+      urlInput.value = urls.join('\n');
       updateLinkCount();
-      console.log('File cleared');
-    });
-  } else {
-    console.error('File input, file name container, or clear file button not found');
-  }
+      showToast('File uploaded successfully');
+    };
+    reader.readAsText(file);
+  });
+
+  clearFileButton.addEventListener('click', () => {
+    fileInput.value = '';
+    fileNameContainer.style.display = 'none';
+    fileNameContainer.querySelector('span').textContent = '';
+    urlInput.value = '';
+    updateLinkCount();
+    showToast('File cleared');
+  });
 
   // Start Scan
-  const startScanButton = document.getElementById('start-scan');
-  if (startScanButton) {
-    startScanButton.addEventListener('click', async () => {
-      console.log('Start Scan button clicked');
-      
-      const rawUrls = urlInput.value.split('\n').map(url => url.trim()).filter(url => url);
-      const urls = rawUrls.map(url => isValidUrl(url)).filter(url => url);
+  const startScan = async () => {
+    const rawUrls = urlInput.value.split('\n').map(url => url.trim()).filter(url => url);
+    const urls = rawUrls.map(url => isValidUrl(url)).filter(url => url);
 
-      if (!urls.length) {
-        alert('Please enter at least one valid URL (e.g., https://example.com).');
-        console.warn('No valid URLs provided');
-        return;
-      }
+    if (!urls.length) {
+      showToast('Please enter at least one valid URL', 'error');
+      return;
+    }
 
-      if (urls.length < rawUrls.length) {
-        alert('Some URLs were invalid and skipped. Ensure URLs include http:// or https://.');
-        console.warn('Invalid URLs skipped:', rawUrls.filter(url => !isValidUrl(url)));
-      }
+    if (urls.length < rawUrls.length) {
+      showToast('Some URLs were invalid and skipped', 'error');
+    }
 
-      const loadingOverlay = document.querySelector('.loading-overlay');
-      const resultsSection = document.querySelector('.results-section');
+    loadingOverlay.classList.remove('hidden');
+    tipsPanel.classList.remove('hidden');
+    resultsSection.classList.add('hidden');
+    showTip();
 
-      if (loadingOverlay && resultsSection) {
-        console.log('Showing loading overlay');
-        loadingOverlay.classList.remove('hidden');
-        resultsSection.classList.add('hidden');
-      } else {
-        console.error('Loading overlay or results section not found');
-      }
+    try {
+      const results = await scanLinks(urls);
+      displayResults(results);
+      updateHealthScore(results);
+      updateSummary(results);
+      loadingOverlay.classList.add('hidden');
+      tipsPanel.classList.add('hidden');
+      resultsSection.classList.remove('hidden');
+      playScanCompleteSound();
+      showToast('Scan completed successfully');
+      window.scrollTo({ top: resultsSection.offsetTop, behavior: 'smooth' });
+    } catch (error) {
+      console.error('Scan failed:', error);
+      showToast('Scan failed. Please try again.', 'error');
+      loadingOverlay.classList.add('hidden');
+      tipsPanel.classList.add('hidden');
+    }
+  };
 
-      try {
-        console.log('Initiating scan for URLs:', urls);
-        const results = await scanLinks(urls);
-        console.log('Displaying results:', results);
-        displayResults(results);
-        updateHealthScore(results);
-        updateSummary(results);
-
-        console.log('Hiding loading overlay, showing results');
-        loadingOverlay.classList.add('hidden');
-        resultsSection.classList.remove('hidden');
-        window.scrollTo({ top: resultsSection.offsetTop, behavior: 'smooth' });
-      } catch (error) {
-        console.error('Scan failed:', error);
-        alert('An error occurred during scanning. Please check the console for details.');
-        if (loadingOverlay) {
-          loadingOverlay.classList.add('hidden');
-        }
-      }
-    });
-  } else {
-    console.error('Start Scan button not found');
-  }
+  document.getElementById('start-scan').addEventListener('click', startScan);
+  document.getElementById('scan-again').addEventListener('click', () => {
+    urlInput.value = '';
+    updateLinkCount();
+    resultsSection.classList.add('hidden');
+    startScan();
+  });
 
   // Display Results
   const displayResults = (results) => {
-    console.log('Rendering results:', results);
     const container = document.getElementById('results-container');
-    if (!container) {
-      console.error('Results container not found');
-      return;
-    }
     container.innerHTML = '';
 
     results.forEach((result, index) => {
@@ -184,25 +197,25 @@ document.addEventListener('DOMContentLoaded', () => {
           statusClass = 'status-ok';
           statusText = 'OK';
           statusIcon = '✅';
-          tooltip = 'Link is accessible and working';
+          tooltip = 'Link is accessible';
           break;
         case 'redirect':
           statusClass = 'status-redirect';
-          statusText = 'Redirected';
-          statusIcon = '🔄';
+          statusText = 'Redirect';
+          statusIcon = '🔁';
           tooltip = 'Link redirects to another URL';
           break;
         case 'broken':
           statusClass = 'status-broken';
           statusText = 'Broken';
           statusIcon = '❌';
-          tooltip = 'Link is inaccessible (error)';
+          tooltip = 'Link is inaccessible';
           break;
         case 'timeout':
           statusClass = 'status-timeout';
           statusText = 'Timeout';
           statusIcon = '🕒';
-          tooltip = 'Request timed out after 8 seconds';
+          tooltip = 'Request timed out';
           break;
         case 'unreachable':
           statusClass = 'status-unreachable';
@@ -214,14 +227,14 @@ document.addEventListener('DOMContentLoaded', () => {
           statusClass = 'status-risky';
           statusText = 'Risky';
           statusIcon = '⚠️';
-          tooltip = 'Link is on a blacklisted domain';
+          tooltip = 'Blacklisted domain';
           break;
       }
 
       const faviconUrl = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(result.url)}`;
       const details = [];
       if (result.redirectChain.length > 1) {
-        details.push(`Redirect Chain: ${result.redirectChain.join(' → ')}`);
+        details.push(`Redirect Chain: ${result.redirectChain.join(' ➜ ')}`);
       }
       if (result.error) {
         details.push(result.error);
@@ -229,7 +242,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
       card.innerHTML = `
         <img src="${faviconUrl}" class="favicon" alt="Favicon">
-        <a href="${result.url}" class="url" target="_blank">${result.url}</a>
+        <div class="url-container">
+          <a href="${result.url}" class="url" target="_blank">${result.url}</a>
+          <button class="copy-btn" title="Copy URL">📋</button>
+        </div>
         <span class="status-tag ${statusClass}" data-tooltip="${tooltip}">
           <span class="status-icon">${statusIcon}</span> ${statusText}
         </span>
@@ -237,20 +253,50 @@ document.addEventListener('DOMContentLoaded', () => {
         <div class="timestamp">Scanned: ${new Date(result.timestamp).toLocaleString()}</div>
       `;
 
+      card.querySelector('.copy-btn').addEventListener('click', () => {
+        navigator.clipboard.writeText(result.url).then(() => {
+          showToast('URL copied to clipboard');
+        });
+      });
+
       container.appendChild(card);
     });
 
-    // Toggle Risky/Broken
-    const toggleRiskyBroken = document.getElementById('toggle-risky-broken');
-    if (toggleRiskyBroken) {
-      toggleRiskyBroken.addEventListener('change', () => {
-        const cards = document.querySelectorAll('.result-card');
-        cards.forEach(card => {
-          const isRiskyOrBroken = card.classList.contains('risky') || card.classList.contains('broken');
-          card.style.display = toggleRiskyBroken.checked && !isRiskyOrBroken ? 'none' : 'block';
-        });
+    // Filter and Sort
+    const filterStatus = document.getElementById('filter-status');
+    const sortBy = document.getElementById('sort-by');
+
+    const applyFiltersAndSort = () => {
+      const filterValue = filterStatus.value;
+      const sortValue = sortBy.value;
+      const cards = Array.from(document.querySelectorAll('.result-card'));
+
+      // Filter
+      cards.forEach(card => {
+        const status = card.classList[1];
+        card.style.display = filterValue === 'all' || status === filterValue ? 'block' : 'none';
       });
-    }
+
+      // Sort
+      const sortedCards = cards.sort((a, b) => {
+        const resultA = results.find(r => r.url === a.querySelector('.url').textContent);
+        const resultB = results.find(r => r.url === b.querySelector('.url').textContent);
+        if (sortValue === 'status') {
+          const order = { risky: 0, broken: 1, redirect: 2, ok: 3, timeout: 4, unreachable: 5 };
+          return order[resultA.status] - order[resultB.status];
+        } else if (sortValue === 'url') {
+          return resultA.url.localeCompare(resultB.url);
+        } else {
+          return new Date(resultA.timestamp) - new Date(resultB.timestamp);
+        }
+      });
+
+      container.innerHTML = '';
+      sortedCards.forEach(card => container.appendChild(card));
+    };
+
+    filterStatus.addEventListener('change', applyFiltersAndSort);
+    sortBy.addEventListener('change', applyFiltersAndSort);
   };
 
   // Update Summary
@@ -272,14 +318,24 @@ document.addEventListener('DOMContentLoaded', () => {
   const updateHealthScore = (results) => {
     const validLinks = results.filter(r => r.status === 'ok').length;
     const score = Math.round((validLinks / results.length) * 100);
-    const healthScore = document.getElementById('health-score');
-    const progressCircle = document.getElementById('progress-circle');
-    if (healthScore && progressCircle) {
-      healthScore.textContent = `${score}%`;
-      progressCircle.style.setProperty('--progress', `${score}%`);
-      console.log('Health score updated:', score);
-    } else {
-      console.error('Health score or progress circle not found');
-    }
+    document.getElementById('health-score').textContent = `${score}%`;
+    document.getElementById('progress-circle').style.setProperty('--progress', `${score}%`);
   };
+
+  // Copy Summary
+  document.getElementById('copy-summary').addEventListener('click', () => {
+    const summary = `
+LinkCheckr Pro Scan Summary
+Generated: ${new Date().toLocaleString()}
+Link Health: ${document.getElementById('health-score').textContent}
+Total: ${document.getElementById('summary-total').textContent}
+OK: ${document.getElementById('summary-ok').textContent}
+Redirects: ${document.getElementById('summary-redirects').textContent}
+Broken: ${document.getElementById('summary-broken').textContent}
+Risky: ${document.getElementById('summary-risky').textContent}
+    `;
+    navigator.clipboard.writeText(summary).then(() => {
+      showToast('Summary copied to clipboard');
+    });
+  });
 });
