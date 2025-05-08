@@ -174,13 +174,16 @@ document.addEventListener('DOMContentLoaded', () => {
       showToast('Some URLs were invalid and skipped', 'error');
     }
 
+    const useProxy = document.getElementById('use-proxy').checked;
+    console.log('Scanning with CORS proxy:', useProxy);
+
     loadingOverlay.classList.remove('hidden');
     tipsPanel.classList.remove('hidden');
     resultsContent.classList.add('hidden');
     showTip();
 
     try {
-      const results = await scanLinks(urls);
+      const results = await scanLinks(urls, useProxy);
       displayResults(results);
       updateHealthScore(results);
       updateSummary(results);
