@@ -264,6 +264,33 @@ h2 {
   color: #0f1117;
 }
 
+/* Proxy Toggle */
+.proxy-toggle {
+  display: flex;
+  align-items: center;
+  gap: min(2vw, 0.5rem);
+  font-size: clamp(0.875rem, 2.5vw, 1rem);
+  color: #1a1c23;
+}
+
+.dark-mode .proxy-toggle {
+  color: #c0c3cf;
+}
+
+.proxy-toggle input {
+  width: min(4vw, 16px);
+  height: min(4vw, 16px);
+  cursor: pointer;
+}
+
+.proxy-toggle input:checked {
+  accent-color: #3D5AFE;
+}
+
+.dark-mode .proxy-toggle input:checked {
+  accent-color: #00C8FF;
+}
+
 /* Results Section */
 .results-section {
   display: flex;
@@ -510,7 +537,9 @@ h2 {
 }
 
 .status-timeout,
-.status-unreachable {
+.status-unreachable,
+.status-invalid,
+.status-unknown {
   background: #6b7280;
   color: #ffffff;
 }
@@ -781,6 +810,10 @@ h2 {
 
   #show-tips {
     display: none; /* Tips integrated on mobile */
+  }
+
+  .proxy-toggle {
+    justify-content: center;
   }
 }
 
