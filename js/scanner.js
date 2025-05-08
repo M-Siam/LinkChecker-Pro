@@ -1,7 +1,6 @@
-async function scanLinks(urls) {
-  console.log('Starting link scan for:', urls);
+async function scanLinks(urls, useProxy = false) {
+  console.log('Starting link scan for:', urls, { useProxy });
   const results = [];
-  const useProxy = false; // Toggle for CORS proxy (can be made dynamic in UI)
   const proxyUrl = 'https://cors-anywhere.herokuapp.com/'; // Public CORS proxy
 
   for (let url of urls) {
@@ -33,7 +32,10 @@ async function scanLinks(urls) {
     }
 
     // Check blacklist
-    result.isRisky = blacklist.some(domain => hostname === domain || hostname.endsWith('.' + domain));
+    result.isRisky = blacklist.some(domain => {
+      const normalizedDomain = domain.toLowerCase();
+      return hostname === normalizedDomain || hostname.endsWith('.' + normalizedDomain);
+    });
     if (result.isRisky) {
       result.status = 'risky';
       result.error = 'Domain is blacklisted';
@@ -45,7 +47,7 @@ async function scanLinks(urls) {
     // Attempt scanning with HTTP/HTTPS and optional proxy
     const protocols = [normalizedUrl];
     if (normalizedUrl.startsWith('http://')) {
-      protocols.push(normalizedUrl.replace('http://', 'https://'));
+      protocols.unshift(normalizedUrl.replace('http://', 'https://')); // Prioritize HTTPS
     }
 
     let response = null;
@@ -54,7 +56,7 @@ async function scanLinks(urls) {
 
     for (const tryUrl of protocols) {
       const attempts = [tryUrl];
-      if (!triedProxy && useProxy) {
+      if (useProxy && !triedProxy) {
         attempts.push(`${proxyUrl}${tryUrl}`);
       }
 
@@ -65,7 +67,7 @@ async function scanLinks(urls) {
         try {
           response = await fetch(fetchUrl, {
             method: 'HEAD',
-            redirect: 'follow', // Follow redirects to capture chain
+            redirect: 'follow',
             signal: controller.signal,
             headers: {
               'Accept': '*/*',
@@ -132,7 +134,9 @@ async function scanLinks(urls) {
         result.status = 'unreachable';
         result.error = 'Unable to reach server (possible CORS, DNS, or protocol issue).';
         if (!triedProxy) {
-          result.error += ' Try enabling CORS proxy (e.g., cors-anywhere.herokuapp.com) or using HTTPS.';
+          result.error += ' Enable CORS proxy in settings or try HTTPS.';
+        } else {
+          result.error += ' CORS proxy failed; check proxy access or try HTTPS.';
         }
       } else {
         result.status = 'unknown';
