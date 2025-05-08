@@ -182,8 +182,12 @@ document.addEventListener('DOMContentLoaded', () => {
     resultsContent.classList.add('hidden');
     showTip();
 
+    // Rotate tips every 5 seconds during scan
+    const tipInterval = setInterval(showTip, 5000);
+
     try {
       const results = await scanLinks(urls, useProxy);
+      clearInterval(tipInterval);
       displayResults(results);
       updateHealthScore(results);
       updateSummary(results);
@@ -194,6 +198,7 @@ document.addEventListener('DOMContentLoaded', () => {
       showToast('Scan completed successfully');
       window.scrollTo({ top: resultsSection.offsetTop, behavior: 'smooth' });
     } catch (error) {
+      clearInterval(tipInterval);
       console.error('Scan failed:', error);
       showToast('Scan failed. Please try again.', 'error');
       loadingOverlay.classList.add('hidden');
@@ -376,9 +381,22 @@ OK: ${document.getElementById('summary-ok').textContent}
 Redirects: ${document.getElementById('summary-redirects').textContent}
 Broken: ${document.getElementById('summary-broken').textContent}
 Risky: ${document.getElementById('summary-risky').textContent}
+---
+© 2025 SIAM. All rights reserved.
+https://m-siam.github.io/LinkChecker-Pro/
     `;
     navigator.clipboard.writeText(summary).then(() => {
       showToast('Summary copied to clipboard');
     });
+  });
+
+  // Export PDF
+  document.getElementById('export-pdf').addEventListener('click', () => {
+    exportToPDF();
+  });
+
+  // Export CSV
+  document.getElementById('export-csv').addEventListener('click', () => {
+    exportToCSV();
   });
 });
