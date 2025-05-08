@@ -4,26 +4,26 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>LinkCheckr Pro</title>
-  <link rel="stylesheet" href="css/style.css">
-  <link rel="icon" href="assets/favicon.png" type="image/png">
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="favicon.ico" type="image/x-icon">
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body class="dark-mode">
-  <!-- Header -->
-  <header class="hero card">
-    <img src="assets/logo.svg" alt="LinkCheckr Pro Logo" class="logo">
-    <h1>LinkCheckr Pro</h1>
-    <div class="theme-switch" id="theme-toggle" aria-label="Toggle Theme">
-      <div class="theme-slider"></div>
-    </div>
-  </header>
+  <!-- Main Card Container -->
+  <div class="main-card">
+    <!-- Header -->
+    <header class="header">
+      <img src="logo.svg" alt="LinkCheckr Pro Logo" class="logo">
+      <h1>LinkCheckr Pro</h1>
+      <div class="theme-switch" id="theme-toggle" aria-label="Toggle Theme">
+        <span class="theme-icon">🌙</span>
+      </div>
+    </header>
 
-  <!-- Main Content -->
-  <main>
     <!-- Input Section -->
-    <section class="input-section card animated">
-      <h2>Check Your Links</h2>
-      <textarea id="url-input" placeholder="Paste URLs (one per line, e.g., https://example.com)" rows="6"></textarea>
+    <section class="input-section">
+      <h2>Paste Your Links</h2>
+      <textarea id="url-input" placeholder="Enter URLs (one per line, e.g., https://example.com)" rows="5"></textarea>
       <div class="input-controls">
         <div class="file-upload">
           <input type="file" id="file-input" accept=".txt,.csv">
@@ -37,34 +37,56 @@
       <p>Total Links: <span id="link-count">0</span></p>
     </section>
 
-    <!-- Tips Panel -->
-    <section class="tips-panel card animated">
+    <!-- Tips Section -->
+    <section class="tips-section">
       <h3>Smart Tip</h3>
       <p id="tip-text" class="tip-text">Paste your links to start scanning!</p>
     </section>
 
     <!-- Results Section -->
-    <section class="results-section card hidden">
+    <section class="results-section hidden">
       <h2>Scan Results</h2>
       <div class="health-score">
         <h3>Link Health: <span id="health-score">0%</span></h3>
         <div class="progress-circle" id="progress-circle"></div>
       </div>
       <div class="results-summary">
-        <p>Total: <span id="summary-total">0</span> | OK: <span id="summary-ok">0</span> | Redirects: <span id="summary-redirects">0</span> | Broken: <span id="summary-broken">0</span> | Risky: <span id="summary-risky">0</span></p>
-        <label class="toggle-risky-broken"><input type="checkbox" id="toggle-risky-broken"> Show Only Risky/Broken</label>
+        <p>Total: <span id="summary-total">0</span> | OK: <span id="summary-ok">0</span> | Redirects: <span id="summary-redirects">0</span> | Broken: <span id="summary-broken">0</span> | Unknown: <span id="summary-unknown">0</span></p>
+        <div class="filter-sort">
+          <select id="filter-status">
+            <option value="all">All Statuses</option>
+            <option value="ok">OK</option>
+            <option value="redirect">Redirect</option>
+            <option value="broken">Broken</option>
+            <option value="unknown">Unknown</option>
+          </select>
+          <select id="sort-by">
+            <option value="status">Sort by Status</option>
+            <option value="domain">Sort by Domain</option>
+            <option value="time">Sort by Time</option>
+          </select>
+        </div>
       </div>
       <div id="results-container" class="results-grid"></div>
-      <div class="export-controls">
-        <button id="export-csv" class="glow-button">Export CSV</button>
+      <div class="result-actions">
+        <button id="scan-again" class="glow-button">Scan Again</button>
+        <button id="share-results" class="glow-button">Share Summary</button>
         <button id="export-pdf" class="glow-button">Export PDF</button>
       </div>
     </section>
-  </main>
+  </div>
 
-  <!-- Footer -->
-  <footer class="card">
-    <p>Built Free by [YourName]</p>
+  <!-- Toast Notification -->
+  <div class="toast" id="toast"></div>
+
+  <!-- Sticky Footer -->
+  <footer class="footer">
+    <p>© 2025 SIAM. All rights reserved.</p>
+    <nav class="footer-nav">
+      <a href="#about">About</a> •
+      <a href="#contact">Contact</a> •
+      <a href="#privacy">Privacy</a>
+    </nav>
   </footer>
 
   <!-- Loading Overlay -->
@@ -72,10 +94,9 @@
     <div class="spinner"></div>
   </div>
 
-  <script src="libs/html2pdf.bundle.min.js"></script>
-  <script src="data/blacklist.js"></script>
-  <script src="js/scanner.js"></script>
-  <script src="js/export.js"></script>
-  <script src="js/main.js"></script>
+  <script src="blacklist.js"></script>
+  <script src="tips.js"></script>
+  <script src="pdf-export.js"></script>
+  <script src="script.js"></script>
 </body>
 </html>
