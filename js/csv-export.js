@@ -3,8 +3,9 @@ function exportToCSV() {
     const url = card.querySelector('.url').textContent;
     const status = card.querySelector('.status-tag').textContent.trim().split('\n')[1];
     const details = card.querySelector('.details').innerHTML.replace(/<br>/g, '; ');
+    const insights = card.querySelector('.insights').textContent;
     const timestamp = card.querySelector('.timestamp').textContent;
-    return { url, status, details, timestamp };
+    return { url, status, details, insights, timestamp };
   });
 
   const healthScore = document.getElementById('health-score').textContent;
@@ -29,11 +30,12 @@ function exportToCSV() {
     `Redirects,${summary.redirects}`,
     `Broken,${summary.broken}`,
     `Risky,${summary.risky}`,
+    'Recommendations,Fix broken links to improve SEO and user experience. Verify risky links with Google Safe Browsing.',
     '',
     'Scan Results',
-    'URL,Status,Details,Timestamp',
+    'URL,Status,Details,Insights,Timestamp',
     ...results.map(result =>
-      `"${result.url.replace(/"/g, '""')}","${result.status}","${result.details.replace(/"/g, '""') || '-'}","${result.timestamp}"`
+      `"${result.url.replace(/"/g, '""')}","${result.status}","${result.details.replace(/"/g, '""') || '-'}","${result.insights.replace(/"/g, '""')}","${result.timestamp}"`
     )
   ].join('\n');
 
