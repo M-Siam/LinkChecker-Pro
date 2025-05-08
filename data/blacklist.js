@@ -1,4 +1,5 @@
 const blacklist = [
+  'malware.testing.google.test',
   'malicious-site.com',
   'phishingsite.net',
   'scamdomain.org',
