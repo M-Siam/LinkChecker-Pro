@@ -9,20 +9,20 @@
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body class="dark-mode">
-  <!-- Main Card -->
-  <main class="main-card card animated">
-    <!-- Header -->
-    <header class="hero">
-      <img src="assets/logo.svg" alt="LinkCheckr Pro Logo" class="logo">
-      <h1>LinkCheckr Pro</h1>
-      <div class="theme-switch" id="theme-toggle" aria-label="Toggle Theme">
-        <div class="theme-slider"></div>
-      </div>
-    </header>
+  <!-- Header -->
+  <header class="hero card">
+    <img src="assets/logo.svg" alt="LinkCheckr Pro Logo" class="logo">
+    <h1>LinkCheckr Pro</h1>
+    <div class="theme-switch" id="theme-toggle" aria-label="Toggle Theme">
+      <div class="theme-slider"></div>
+    </div>
+  </header>
 
-    <!-- Input Section -->
-    <section class="input-section">
-      <h2>Scan Your Links</h2>
+  <!-- Main Content -->
+  <main class="main-container">
+    <!-- Left Part: Input Section -->
+    <section class="input-section card">
+      <h2>Enter Your Links</h2>
       <textarea id="url-input" placeholder="Paste URLs (one per line, e.g., https://example.com)" rows="5"></textarea>
       <div class="input-controls">
         <div class="file-upload" id="file-upload">
@@ -37,45 +37,51 @@
       <p>Total Links: <span id="link-count">0</span></p>
     </section>
 
-    <!-- Tips Panel -->
-    <section class="tips-panel hidden">
-      <h3>Smart Tip</h3>
-      <p id="tip-text" class="tip-text"></p>
-    </section>
+    <!-- Right Part: Results and Actions -->
+    <section class="results-section card">
+      <!-- Tips Panel (Toggleable on PC, Integrated on Mobile) -->
+      <div class="tips-panel hidden">
+        <h3>Smart Tip</h3>
+        <p id="tip-text" class="tip-text"></p>
+        <button id="toggle-tips" class="glow-button secondary">Hide Tips</button>
+      </div>
 
-    <!-- Results Section -->
-    <section class="results-section hidden">
-      <div class="results-header">
-        <h2>Scan Results</h2>
-        <button id="scan-again" class="glow-button secondary">Scan Again</button>
-      </div>
-      <div class="health-score">
-        <h3>Link Health: <span id="health-score">0%</span></h3>
-        <div class="progress-circle" id="progress-circle"></div>
-      </div>
-      <div class="results-summary">
-        <p>Total: <span id="summary-total">0</span> | OK: <span id="summary-ok">0</span> | Redirects: <span id="summary-redirects">0</span> | Broken: <span id="summary-broken">0</span> | Risky: <span id="summary-risky">0</span></p>
-        <div class="filter-sort">
-          <select id="filter-status">
-            <option value="all">All Statuses</option>
-            <option value="ok">OK</option>
-            <option value="redirect">Redirect</option>
-            <option value="broken">Broken</option>
-            <option value="risky">Risky</option>
-            <option value="timeout">Timeout</option>
-            <option value="unreachable">Unreachable</option>
-          </select>
-          <select id="sort-by">
-            <option value="status">Sort by Status</option>
-            <option value="url">Sort by URL</option>
-            <option value="timestamp">Sort by Time</option>
-          </select>
+      <!-- Results -->
+      <div class="results-content hidden">
+        <div class="results-header">
+          <h2>Scan Results</h2>
+          <button id="scan-again" class="glow-button secondary">Scan Again</button>
         </div>
-      </div>
-      <div id="results-container" class="results-grid"></div>
-      <div class="export-controls">
-        <button id="copy-summary" class="glow-button secondary">Copy Summary</button>
-        <button id="export-pdf" class="glow-button">Export PDF</button>
+        <div class="health-score">
+          <h3>Link Health: <span id="health-score">0%</span></h3>
+          <div class="progress-circle" id="progress-circle"></div>
+        </div>
+        <div class="results-summary">
+          <p>Total: <span id="summary-total">0</span> | OK: <span id="summary-ok">0</span> | Redirects: <span id="summary-redirects">0</span> | Broken: <span id="summary-broken">0</span> | Risky: <span id="summary-risky">0</span></p>
+          <div class="filter-sort">
+            <select id="filter-status">
+              <option value="all">All Statuses</option>
+              <option value="ok">OK</option>
+              <option value="redirect">Redirect</option>
+              <option value="broken">Broken</option>
+              <option value="risky">Risky</option>
+              <option value="timeout">Timeout</option>
+              <option value="unreachable">Unreachable</option>
+            </select>
+            <select id="sort-by">
+              <option value="status">Sort by Status</option>
+              <option value="url">Sort by URL</option>
+              <option value="timestamp">Sort by Time</option>
+            </select>
+          </div>
+        </div>
+        <div id="results-container" class="results-grid"></div>
+        <div class="export-controls">
+          <button id="copy-summary" class="glow-button secondary">Copy Summary</button>
+          <button id="export-pdf" class="glow-button">Export PDF</button>
+          <button id="export-csv" class="glow-button">Export CSV</button>
+          <button id="show-tips" class="glow-button secondary">Show Tips</button>
+        </div>
       </div>
     </section>
   </main>
