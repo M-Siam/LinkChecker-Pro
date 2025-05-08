@@ -23,7 +23,11 @@ document.addEventListener('DOMContentLoaded', () => {
   // Smart Tips
   const showTip = () => {
     const tipText = document.getElementById('tip-text');
-    tipText.textContent = tips[Math.floor(Math.random() * tips.length)];
+    tipText.style.opacity = '0';
+    setTimeout(() => {
+      tipText.textContent = tips[Math.floor(Math.random() * tips.length)];
+      tipText.style.opacity = '1';
+    }, 300);
   };
 
   // Toast Notification
@@ -43,14 +47,14 @@ document.addEventListener('DOMContentLoaded', () => {
       audio.play().catch(err => {
         console.warn('Audio playback failed:', err);
         const resultsSection = document.querySelector('.results-section');
-        resultsSection.style.animation = 'pulseScore 0.6s ease';
-        setTimeout(() => resultsSection.style.animation = '', 600);
+        resultsSection.style.animation = 'pulseScore 0.5s ease';
+        setTimeout(() => resultsSection.style.animation = '', 500);
       });
     } catch (err) {
       console.warn('Audio file missing:', err);
       const resultsSection = document.querySelector('.results-section');
-      resultsSection.style.animation = 'pulseScore 0.6s ease';
-      setTimeout(() => resultsSection.style.animation = '', 600);
+      resultsSection.style.animation = 'pulseScore 0.5s ease';
+      setTimeout(() => resultsSection.style.animation = '', 500);
     }
   };
 
@@ -65,9 +69,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const resultsSection = document.querySelector('.results-section');
   const resultsContent = document.querySelector('.results-content');
   const loadingOverlay = document.querySelector('.loading-overlay');
-  const scanProgress = document.getElementById('scan-progress');
-  const progressBar = document.getElementById('progress-bar');
-  const scanStatus = document.getElementById('scan-status');
 
   const isValidUrl = (string) => {
     try {
@@ -149,44 +150,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Tips Toggle
   const toggleTipsButton = document.getElementById('toggle-tips');
-  const showTipsButton = document.getElementById('show-tips');
-
-  showTipsButton.addEventListener('click', () => {
-    tipsPanel.classList.remove('hidden');
-    resultsContent.classList.add('hidden');
-    showTip();
-  });
-
   toggleTipsButton.addEventListener('click', () => {
     tipsPanel.classList.add('hidden');
     resultsContent.classList.remove('hidden');
   });
 
-  // Auto-Save Results
-  const saveResults = (results) => {
-    localStorage.setItem('linkcheckr_results', JSON.stringify(results));
-    console.log('Results saved to localStorage');
-  };
-
-  const loadResults = () => {
-    const saved = localStorage.getItem('linkcheckr_results');
-    if (saved) {
-      const results = JSON.parse(saved);
-      displayResults(results);
-      updateHealthScore(results);
-      updateSummary(results);
-      resultsContent.classList.remove('hidden');
-      showToast('Loaded previous scan results');
-    }
-  };
-
   // Start Scan
+  let scanInProgress = false;
   const startScan = async () => {
+    if (scanInProgress) return;
+    scanInProgress = true;
+
     const rawUrls = urlInput.value.split('\n').map(url => url.trim()).filter(url => url);
     const urls = rawUrls.map(url => isValidUrl(url)).filter(url => url);
 
     if (!urls.length) {
       showToast('Please enter at least one valid URL', 'error');
+      scanInProgress = false;
       return;
     }
 
@@ -200,58 +180,30 @@ document.addEventListener('DOMContentLoaded', () => {
     loadingOverlay.classList.remove('hidden');
     tipsPanel.classList.remove('hidden');
     resultsContent.classList.add('hidden');
-    scanProgress.classList.remove('hidden');
     showTip();
 
     const tipInterval = setInterval(showTip, 4000);
-    const results = [];
-    let completed = 0;
-    const total = urls.length;
 
-    const updateProgress = () => {
-      completed++;
-      const progress = (completed / total) * 100;
-      progressBar.style.setProperty('--progress', `${progress}%`);
-      const statusCounts = {
-        ok: results.filter(r => r.status === 'ok').length,
-        redirect: results.filter(r => r.status === 'redirect').length,
-        broken: results.filter(r => r.status === 'broken').length,
-        risky: results.filter(r => r.status === 'risky').length
-      };
-      scanStatus.textContent = `${completed}/${total} URLs, OK: ${statusCounts.ok}, Redirects: ${statusCounts.redirect}, Broken: ${statusCounts.broken}, Risky: ${statusCounts.risky}`;
-    };
-
-    for (const url of urls) {
-      try {
-        const result = await scanLinks([url], useProxy);
-        results.push(...result);
-        updateProgress();
-      } catch (error) {
-        console.warn(`Error scanning ${url}:`, error);
-        results.push({
-          url,
-          status: 'unknown',
-          redirectChain: [url],
-          error: 'Scan failed',
-          timestamp: new Date().toISOString(),
-          isRisky: false
-        });
-        updateProgress();
-      }
+    try {
+      const results = await scanLinks(urls, useProxy);
+      clearInterval(tipInterval);
+      displayResults(results);
+      updateHealthScore(results);
+      updateSummary(results);
+      loadingOverlay.classList.add('hidden');
+      resultsContent.classList.remove('hidden');
+      playScanCompleteEffect();
+      showToast('Scan completed successfully');
+      window.scrollTo({ top: resultsSection.offsetTop, behavior: 'smooth' });
+    } catch (error) {
+      clearInterval(tipInterval);
+      console.error('Scan failed:', error);
+      showToast('Scan failed. Please try again.', 'error');
+      loadingOverlay.classList.add('hidden');
+      tipsPanel.classList.add('hidden');
+    } finally {
+      scanInProgress = false;
     }
-
-    clearInterval(tipInterval);
-    displayResults(results);
-    updateHealthScore(results);
-    updateSummary(results);
-    saveResults(results);
-    loadingOverlay.classList.add('hidden');
-    tipsPanel.classList.add('hidden');
-    scanProgress.classList.add('hidden');
-    resultsContent.classList.remove('hidden');
-    playScanCompleteEffect();
-    showToast('Scan completed successfully');
-    window.scrollTo({ top: resultsSection.offsetTop, behavior: 'smooth' });
   };
 
   document.getElementById('start-scan').addEventListener('click', startScan);
@@ -260,41 +212,6 @@ document.addEventListener('DOMContentLoaded', () => {
     updateLinkCount();
     resultsContent.classList.add('hidden');
     startScan();
-  });
-
-  // Batch Actions
-  document.getElementById('batch-actions').addEventListener('click', () => {
-    const results = JSON.parse(localStorage.getItem('linkcheckr_results') || '[]');
-    const failedUrls = results
-      .filter(r => ['broken', 'timeout', 'unreachable'].includes(r.status))
-      .map(r => r.url);
-
-    if (!results.length) {
-      showToast('No results to process', 'error');
-      return;
-    }
-
-    const action = prompt(
-      'Batch Actions:\n1. Copy all OK URLs\n2. Copy all broken URLs\n3. Retry failed URLs\nEnter number (1-3):'
-    );
-
-    if (action === '1') {
-      const okUrls = results.filter(r => r.status === 'ok').map(r => r.url);
-      navigator.clipboard.writeText(okUrls.join('\n')).then(() => {
-        showToast('OK URLs copied to clipboard');
-      });
-    } else if (action === '2') {
-      const brokenUrls = results.filter(r => r.status === 'broken').map(r => r.url);
-      navigator.clipboard.writeText(brokenUrls.join('\n')).then(() => {
-        showToast('Broken URLs copied to clipboard');
-      });
-    } else if (action === '3' && failedUrls.length) {
-      urlInput.value = failedUrls.join('\n');
-      updateLinkCount();
-      startScan();
-    } else {
-      showToast('Invalid action or no failed URLs', 'error');
-    }
   });
 
   // Display Results
@@ -306,72 +223,64 @@ document.addEventListener('DOMContentLoaded', () => {
       const card = document.createElement('div');
       card.className = `result-card ${result.status}`;
       card.id = `result-${index}`;
+      card.style.setProperty('--index', index);
 
       let statusClass = '';
       let statusText = '';
       let statusIcon = '';
       let tooltip = '';
-      let insights = '';
 
       switch (result.status) {
         case 'ok':
           statusClass = 'status-ok';
           statusText = 'OK';
           statusIcon = '✅';
-          tooltip = 'Link is accessible and functioning correctly.';
-          insights = 'No action needed. Link is healthy.';
+          tooltip = 'Link is fully accessible and secure';
           break;
         case 'redirect':
           statusClass = 'status-redirect';
           statusText = 'Redirect';
           statusIcon = '🔁';
-          tooltip = 'Link redirects to another URL. Check if the destination is intended.';
-          insights = 'Verify the redirect destination for relevance and SEO impact.';
+          tooltip = 'Link redirects to another URL';
           break;
         case 'broken':
           statusClass = 'status-broken';
           statusText = 'Broken';
           statusIcon = '❌';
-          tooltip = 'Link is inaccessible (e.g., HTTP 404). Check the URL or contact the site owner.';
-          insights = 'Fix or remove broken links to improve user experience and SEO.';
+          tooltip = 'Link is inaccessible (HTTP 400–599)';
           break;
         case 'timeout':
           statusClass = 'status-timeout';
           statusText = 'Timeout';
           statusIcon = '⚠️';
-          tooltip = 'Request timed out. The server may be down or slow.';
-          insights = 'Retry the scan or check server status.';
+          tooltip = 'Request timed out after 10 seconds';
           break;
         case 'unreachable':
           statusClass = 'status-unreachable';
           statusText = 'Unreachable';
           statusIcon = '⚠️';
-          tooltip = 'Link could not be reached (e.g., DNS or CORS issue). Try enabling CORS proxy or HTTPS.';
-          insights = 'Check DNS settings or enable CORS proxy in settings.';
+          tooltip = 'Unable to reach server (CORS, DNS, or protocol issue)';
           break;
         case 'invalid':
           statusClass = 'status-invalid';
           statusText = 'Invalid';
           statusIcon = '🛑';
-          tooltip = 'Invalid URL format. Ensure the URL is correctly formatted.';
-          insights = 'Correct the URL format and rescan.';
+          tooltip = 'Invalid URL format';
           break;
         case 'risky':
           statusClass = 'status-risky';
           statusText = 'Risky';
           statusIcon = '⚠️';
-          tooltip = 'Blacklisted domain. Avoid linking to potentially harmful sites.';
-          insights = 'Remove or replace risky links. Verify with Google Safe Browsing.';
+          tooltip = 'Domain is blacklisted';
           break;
         default:
           statusClass = 'status-unknown';
           statusText = 'Unknown';
           statusIcon = '⚠️';
-          tooltip = 'Unknown error occurred during scanning.';
-          insights = 'Retry the scan or check for network issues.';
+          tooltip = 'Unknown error occurred';
       }
 
-      const faviconUrl = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(result.url)}`;
+      const faviconUrl = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(result.url)}&sz=32`;
       const details = [];
       if (result.redirectChain.length > 1) {
         details.push(`Redirect Chain: ${result.redirectChain.join(' → ')}`);
@@ -381,16 +290,21 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       card.innerHTML = `
-        <img src="${faviconUrl}" class="favicon" alt="Favicon">
-        <div class="url-container">
-          <a href="${result.url}" class="url" target="_blank">${result.url}</a>
-          <button class="copy-btn" title="Copy URL">📋</button>
+        <div class="card-header">
+          <img src="${faviconUrl}" class="favicon" alt="Favicon" onerror="this.src='assets/favicon.ico'">
+          <div class="url-container">
+            <a href="${result.url}" class="url url-tooltip" target="_blank" data-full-url="${result.url}" aria-label="Visit ${result.url}">${result.url}</a>
+            <button class="copy-btn" title="Copy URL" aria-label="Copy URL">📋</button>
+          </div>
         </div>
-        <span class="status-tag ${statusClass}" data-tooltip="${tooltip}">
-          <span class="status-icon">${statusIcon}</span> ${statusText}
-        </span>
-        <div class="details">${details.join('<br>')}</div>
-        <div class="insights">${insights}</div>
+        <div class="status-badge ${statusClass}" data-tooltip="${tooltip}" role="status">
+          <span class="status-icon">${statusIcon}</span>
+          <span class="status-text">${statusText}</span>
+        </div>
+        <div class="details-container">
+          <div class="details">${details.join('<br>')}</div>
+        </div>
+        <button class="toggle-details" aria-label="Toggle Details">${details.length ? 'Show Details ▼' : 'No Details'}</button>
         <div class="timestamp">Scanned: ${new Date(result.timestamp).toLocaleString()}</div>
       `;
 
@@ -399,6 +313,17 @@ document.addEventListener('DOMContentLoaded', () => {
           showToast('URL copied to clipboard');
         });
       });
+
+      if (details.length) {
+        const toggleDetails = card.querySelector('.toggle-details');
+        toggleDetails.addEventListener('click', () => {
+          const detailsContainer = card.querySelector('.details-container');
+          detailsContainer.classList.toggle('expanded');
+          toggleDetails.textContent = detailsContainer.classList.contains('expanded') ? 'Hide Details ▲' : 'Show Details ▼';
+        });
+      } else {
+        card.querySelector('.toggle-details').disabled = true;
+      }
 
       container.appendChild(card);
     });
@@ -451,33 +376,63 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('summary-redirects').textContent = redirects;
     document.getElementById('summary-broken').textContent = broken;
     document.getElementById('summary-risky').textContent = risky;
-
-    document.getElementById('popup-ok').textContent = ok;
-    document.getElementById('popup-redirects').textContent = redirects;
-    document.getElementById('popup-broken').textContent = broken;
-    document.getElementById('popup-risky').textContent = risky;
   };
 
-  // Health Score
+  // Health Score and Dynamic Progress Circle
   const updateHealthScore = (results) => {
     const total = results.length;
     const ok = results.filter(r => r.status === 'ok').length;
     const redirects = results.filter(r => r.status === 'redirect').length;
     const broken = results.filter(r => r.status === 'broken').length;
     const risky = results.filter(r => r.status === 'risky').length;
+    const others = total - ok - redirects - broken - risky;
 
     const score = Math.round((ok / total) * 100);
-    const okProgress = (ok / total) * 100;
-    const redirectProgress = (redirects / total) * 100;
-    const brokenProgress = (broken / total) * 100;
-    const riskyProgress = (risky / total) * 100;
-
     document.getElementById('health-score').textContent = `${score}%`;
+
+    const okPercent = (ok / total) * 100;
+    const redirectPercent = (redirects / total) * 100;
+    const brokenPercent = (broken / total) * 100;
+    const riskyPercent = (risky / total) * 100;
+    const otherPercent = (others / total) * 100;
+
+    const isDarkMode = document.body.classList.contains('dark-mode');
+    const okColor = isDarkMode ? '#00FFE0' : '#4CAF50';
+    const redirectColor = '#FFB300';
+    const brokenColor = '#E53935';
+    const riskyColor = '#FF5722';
+    const otherColor = '#6B7280';
+
+    let gradient = '';
+    let currentAngle = 0;
+
+    if (okPercent > 0) {
+      gradient += `${okColor} ${currentAngle}% ${currentAngle + okPercent}%`;
+      currentAngle += okPercent;
+      if (currentAngle < 100) gradient += ', ';
+    }
+    if (redirectPercent > 0) {
+      gradient += `${redirectColor} ${currentAngle}% ${currentAngle + redirectPercent}%`;
+      currentAngle += redirectPercent;
+      if (currentAngle < 100) gradient += ', ';
+    }
+    if (brokenPercent > 0) {
+      gradient += `${brokenColor} ${currentAngle}% ${currentAngle + brokenPercent}%`;
+      currentAngle += brokenPercent;
+      if (currentAngle < 100) gradient += ', ';
+    }
+    if (riskyPercent > 0) {
+      gradient += `${riskyColor} ${currentAngle}% ${currentAngle + riskyPercent}%`;
+      currentAngle += riskyPercent;
+      if (currentAngle < 100) gradient += ', ';
+    }
+    if (otherPercent > 0) {
+      gradient += `${otherColor} ${currentAngle}% ${currentAngle + otherPercent}%`;
+    }
+
     const progressCircle = document.getElementById('progress-circle');
-    progressCircle.style.setProperty('--ok-progress', okProgress);
-    progressCircle.style.setProperty('--redirect-progress', redirectProgress);
-    progressCircle.style.setProperty('--broken-progress', brokenProgress);
-    progressCircle.style.setProperty('--risky-progress', riskyProgress);
+    progressCircle.style.background = `conic-gradient(${gradient})`;
+    progressCircle.style.setProperty('--progress-color', okPercent >= 50 ? okColor : brokenPercent + riskyPercent >= 50 ? brokenColor : redirectColor);
   };
 
   // Copy Summary
@@ -491,7 +446,6 @@ OK: ${document.getElementById('summary-ok').textContent}
 Redirects: ${document.getElementById('summary-redirects').textContent}
 Broken: ${document.getElementById('summary-broken').textContent}
 Risky: ${document.getElementById('summary-risky').textContent}
-Recommendations: Fix broken links to improve SEO and user experience. Verify risky links with Google Safe Browsing.
 ---
 © 2025 SIAM. All rights reserved.
 https://m-siam.github.io/LinkChecker-Pro/
@@ -510,7 +464,4 @@ https://m-siam.github.io/LinkChecker-Pro/
   document.getElementById('export-csv').addEventListener('click', () => {
     exportToCSV();
   });
-
-  // Load Saved Results
-  loadResults();
 });
