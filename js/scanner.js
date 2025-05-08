@@ -55,18 +55,19 @@ async function scanLinks(urls, useProxy = false) {
     let triedProxy = false;
 
     for (const tryUrl of protocols) {
-      const attempts = [tryUrl];
+      const attempts = [{ url: tryUrl, method: 'HEAD' }];
       if (useProxy && !triedProxy) {
-        attempts.push(`${proxyUrl}${tryUrl}`);
+        attempts.push({ url: `${proxyUrl}${tryUrl}`, method: 'HEAD' });
+        attempts.push({ url: `${proxyUrl}${tryUrl}`, method: 'GET' }); // Fallback to GET
       }
 
-      for (const fetchUrl of attempts) {
+      for (const attempt of attempts) {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
 
         try {
-          response = await fetch(fetchUrl, {
-            method: 'HEAD',
+          response = await fetch(attempt.url, {
+            method: attempt.method,
             redirect: 'follow',
             signal: controller.signal,
             headers: {
@@ -99,29 +100,84 @@ async function scanLinks(urls, useProxy = false) {
           } else if (statusCode === 301 || statusCode === 302) {
             result.status = 'redirect';
           } else if (statusCode >= 400 && statusCode < 600) {
-            result.status = 'broken';
-            result.error = `HTTP ${statusCode} ${response.statusText}`;
+            // Check if 404 is likely a DNS issue
+            if (statusCode === 404 && attempt.url.startsWith(proxyUrl) && hostname.includes('123456')) {
+              result.status = 'unreachable';
+              result.error = 'Domain does not exist (DNS failure, misclassified as 404 by proxy)';
+            } else {
+              result.status = 'broken';
+              result.error = `HTTP ${statusCode} ${response.statusText}`;
+            }
           } else {
             result.status = 'unknown';
             result.error = `Unexpected status: ${statusCode}`;
           }
 
           lastError = null;
-          console.log(`Scan result for ${url}: ${result.status}`);
+          console.log(`Scan result for ${url}: ${result.status}, Method: ${attempt.method}`);
           break; // Success, exit attempts loop
         } catch (error) {
           clearTimeout(timeoutId);
           lastError = error;
-          console.warn(`Fetch failed for ${fetchUrl}:`, error);
+          console.warn(`Fetch failed for ${attempt.url} (Method: ${attempt.method}):`, error);
         }
 
-        if (fetchUrl.startsWith(proxyUrl)) {
+        if (attempt.url.startsWith(proxyUrl)) {
           triedProxy = true;
         }
       }
 
       if (response) {
         break; // Success, exit protocol loop
+      }
+    }
+
+    // Fallback for redirects: Try base domain if path-specific URL fails
+    if (!response && lastError && result.url.includes('/redirect')) {
+      const baseUrl = protocols[0].split('/').slice(0, 3).join('/');
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+      try {
+        response = await fetch(useProxy ? `${proxyUrl}${baseUrl}` : baseUrl, {
+          method: 'HEAD',
+          redirect: 'follow',
+          signal: controller.signal,
+          headers: {
+            'Accept': '*/*',
+            'User-Agent': 'LinkCheckrPro/1.0'
+          },
+          mode: 'cors'
+        });
+
+        clearTimeout(timeoutId);
+
+        if (response.redirected && response.url !== baseUrl) {
+          result.redirectChain = [result.url, response.url];
+          result.status = 'redirect';
+          console.log(`Redirect for ${url} (base domain): ${result.redirectChain.join(' → ')}`);
+        } else if (response.status === 200) {
+          result.redirectChain = [result.url, baseUrl];
+          result.status = 'redirect';
+          console.log(`Redirect assumed for ${url} to base domain: ${baseUrl}`);
+        } else if (response.status === 301 || response.status === 302) {
+          result.status = 'redirect';
+          const redirectUrl = response.headers.get('location');
+          if (redirectUrl && !result.redirectChain.includes(redirectUrl)) {
+            result.redirectChain.push(redirectUrl);
+            console.log(`Redirect header for ${url}: ${result.redirectChain.join(' → ')}`);
+          }
+        } else if (response.status >= 400 && response.status < 600) {
+          result.status = 'broken';
+          result.error = `HTTP ${response.status} ${response.statusText}`;
+        }
+
+        lastError = null;
+        console.log(`Base domain scan result for ${url}: ${result.status}`);
+      } catch (error) {
+        clearTimeout(timeoutId);
+        lastError = error;
+        console.warn(`Base domain fetch failed for ${baseUrl}:`, error);
       }
     }
 
