@@ -36,10 +36,23 @@ document.addEventListener('DOMContentLoaded', () => {
     setTimeout(() => toast.remove(), 3000);
   };
 
-  // Play Scan Complete Sound
-  const playScanCompleteSound = () => {
-    const audio = new Audio('assets/complete.mp3');
-    audio.play().catch(err => console.warn('Audio playback failed:', err));
+  // Play Scan Complete Animation (Fallback if MP3 is missing)
+  const playScanCompleteEffect = () => {
+    try {
+      const audio = new Audio('assets/complete.mp3');
+      audio.play().catch(err => {
+        console.warn('Audio playback failed:', err);
+        // Fallback: Pulse animation on results section
+        const resultsSection = document.querySelector('.results-section');
+        resultsSection.style.animation = 'pulseScore 0.5s ease';
+        setTimeout(() => resultsSection.style.animation = '', 500);
+      });
+    } catch (err) {
+      console.warn('Audio file missing:', err);
+      const resultsSection = document.querySelector('.results-section');
+      resultsSection.style.animation = 'pulseScore 0.5s ease';
+      setTimeout(() => resultsSection.style.animation = '', 500);
+    }
   };
 
   // Link Input Handling
@@ -51,6 +64,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const linkCount = document.getElementById('link-count');
   const tipsPanel = document.querySelector('.tips-panel');
   const resultsSection = document.querySelector('.results-section');
+  const resultsContent = document.querySelector('.results-content');
   const loadingOverlay = document.querySelector('.loading-overlay');
 
   const isValidUrl = (string) => {
@@ -131,6 +145,21 @@ document.addEventListener('DOMContentLoaded', () => {
     showToast('File cleared');
   });
 
+  // Tips Toggle
+  const toggleTipsButton = document.getElementById('toggle-tips');
+  const showTipsButton = document.getElementById('show-tips');
+
+  showTipsButton.addEventListener('click', () => {
+    tipsPanel.classList.remove('hidden');
+    resultsContent.classList.add('hidden');
+    showTip();
+  });
+
+  toggleTipsButton.addEventListener('click', () => {
+    tipsPanel.classList.add('hidden');
+    resultsContent.classList.remove('hidden');
+  });
+
   // Start Scan
   const startScan = async () => {
     const rawUrls = urlInput.value.split('\n').map(url => url.trim()).filter(url => url);
@@ -147,7 +176,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     loadingOverlay.classList.remove('hidden');
     tipsPanel.classList.remove('hidden');
-    resultsSection.classList.add('hidden');
+    resultsContent.classList.add('hidden');
     showTip();
 
     try {
@@ -157,8 +186,8 @@ document.addEventListener('DOMContentLoaded', () => {
       updateSummary(results);
       loadingOverlay.classList.add('hidden');
       tipsPanel.classList.add('hidden');
-      resultsSection.classList.remove('hidden');
-      playScanCompleteSound();
+      resultsContent.classList.remove('hidden');
+      playScanCompleteEffect();
       showToast('Scan completed successfully');
       window.scrollTo({ top: resultsSection.offsetTop, behavior: 'smooth' });
     } catch (error) {
@@ -173,7 +202,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('scan-again').addEventListener('click', () => {
     urlInput.value = '';
     updateLinkCount();
-    resultsSection.classList.add('hidden');
+    resultsContent.classList.add('hidden');
     startScan();
   });
 
